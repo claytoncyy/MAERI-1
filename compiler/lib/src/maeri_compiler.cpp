@@ -49,10 +49,15 @@ int main(int argc, char* argv[]) {
   ars->PrintConfig();
 
   auto dbrsConfig = ars->GetDBRS_Config();
-  outputFileWriter.WriteRN_DBRS_Config(dbrsConfig);
+  auto mapping_DBRS = ars->GetDBRS_Inorder_Map();
+  //outputFileWriter.WriteRN_DBRS_Config(dbrsConfig);
 
   auto sgrsConfig = ars->GetSGRS_Config();
-  outputFileWriter.WriteRN_SGRS_Config(sgrsConfig);
+  auto mapping_SGRS = ars->GetSGRS_Inorder_Map();
+
+  int numLvs = static_cast<int>(log2(numMultSwitches));
+  //outputFileWriter.WriteRN_SGRS_Config(sgrsConfig);
+  outputFileWriter.WriteVN_Config(dbrsConfig, sgrsConfig, mapping_DBRS, mapping_SGRS, numLvs);
 
   maestro::LayerParser layerParser(argv[3]);
 

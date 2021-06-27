@@ -38,9 +38,9 @@ namespace MAERI {
     const std::string DBRS_MODE_PADDING = "00";
 
     const std::string SGRS_MODE_IDLE = "00";
-    const std::string SGRS_MODE_ADDTWO = "01";
-    const std::string SGRS_MODE_FLOWLEFT = "10";
-    const std::string SGRS_MODE_FLOWRIGHT = "11";
+    const std::string SGRS_MODE_ADDTWO = "11";
+    const std::string SGRS_MODE_FLOWLEFT = "01";
+    const std::string SGRS_MODE_FLOWRIGHT = "10";
     const std::string SGRS_MODE_PADDING = "0";
 
   };

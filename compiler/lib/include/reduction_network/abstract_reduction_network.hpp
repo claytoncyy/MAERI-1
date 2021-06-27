@@ -31,6 +31,7 @@ Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
 #include <memory>
 #include <cmath>
 #include <cassert>
+#include <map>
 
 #include "switch_modes.hpp"
 #include "switch_config.hpp"
@@ -47,6 +48,8 @@ namespace MAERI {
         int num_mult_switches_;
         int num_levels_;
         int vn_size_;
+        map <int, pair<int, int>> inorder_single_reduction_swtiches;
+        map <int, pair<int, int>> inorder_double_reduction_swtiches;
 
         std::vector<std::vector<std::shared_ptr<SingleReductionSwitch>>> single_reduction_switches_;
         std::vector<std::vector<std::shared_ptr<DoubleReductionSwitch>>> double_reduction_switches_;
@@ -102,6 +105,11 @@ namespace MAERI {
 
           assert(num_levels_ >= 1);
 
+          int num_adder_switches = 0;
+          for (int level = 0; level < num_levels_; level--) {
+            num_adder_switches += pow(level, 2);
+          }
+
           //Lowest level
           for(int inPrt = 0; inPrt < num_mult_switches_; inPrt++) {
             int vn_id = inPrt / vn_size_;
@@ -115,12 +123,16 @@ namespace MAERI {
                 std::cout << "SGRS[" << num_levels_-1 << "][0] receives an initial packet to port " << inPrt %2 << std::endl;
 #endif
                 single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, inPrt %2 );
+                single_reduction_switches_[num_levels_-1][0]->SetIDConnect(0, inPrt % 2);
+                inorder_single_reduction_swtiches.insert(make_pair(0, make_pair(num_levels_ - 1, 0)));
               }
               else if(inPrt > num_mult_switches_-3) {
 #ifdef DEBUG
                 std::cout << "SGRS[" << num_levels_-1 << "][1] receives an initial packet to port " << inPrt %2 << std::endl;
 #endif
                 single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, inPrt %2 );
+                single_reduction_switches_[num_levels_-1][0]->SetIDConnect(num_adder_switches - 1, inPrt % 2);
+                inorder_single_reduction_swtiches.insert(make_pair(num_adder_switches - 1, make_pair(num_levels_ - 1, 1)));
               }
               else {
                 int dbrs_id = (inPrt - 2)/4;
@@ -128,7 +140,10 @@ namespace MAERI {
 #ifdef DEBUG
                 std::cout << "DBRS[" << num_levels_-1 << "]["<< dbrs_id << "] receives an initial packet to port " << port_id << std::endl;
 #endif
+                int inorder_id =  2 * (inPrt / 2);
                 double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
+                double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(inorder_id, port_id);
+                inorder_double_reduction_swtiches.insert(make_pair(inorder_id, make_pair(num_levels_ - 1, dbrs_id)));
               }
             }
             //}
@@ -152,26 +167,34 @@ namespace MAERI {
             if(lv > 0) {
               /* Interconnect SGRSes */
               auto sgrs0_output = single_reduction_switches_[lv][0]->GetPacket(0);
+              int reverse_level = num_levels_ - 1 - lv;
+              int pos = pow(reverse_level, 2) - 1;
+              inorder_single_reduction_swtiches.insert(make_pair(pos, make_pair(lv, 0)));
               if(sgrs0_output != nullptr) {
 #ifdef DEBUG
                 std::cout << "SGRS[" << lv << "][0] Sends a packet to SGRS[" << lv-1 << "][0]" << std::endl;
 #endif
                 single_reduction_switches_[lv-1][0]->PutPacket(sgrs0_output, 0);
+                single_reduction_switches_[lv-1][0]->SetIDConnect(pos, 0);
               }
 
               auto sgrs1_output = single_reduction_switches_[lv][1]->GetPacket(0);
+              pos = pow(reverse_level, 2) - 1 + 2 * pow(lv, 2) * pow(reverse_level, 2);
+              inorder_single_reduction_swtiches.insert(make_pair(pos, make_pair(lv, 1)));
               if(sgrs1_output != nullptr) {
                 if(lv != 1) {
 #ifdef DEBUG
                   std::cout << "SGRS[" << lv << "][1] Sends a packet to SGRS[" << lv-1 << "][1]" << std::endl;
 #endif
                   single_reduction_switches_[lv-1][1]->PutPacket(sgrs1_output, 1);
+                  single_reduction_switches_[lv-1][1]->SetIDConnect(pos, 1);
                 }
                 else {
 #ifdef DEBUG
                   std::cout << "SGRS[" << lv << "][1] Sends a packet to SGRS[" << lv-1 << "][0]" << std::endl;
 #endif                  
-                  single_reduction_switches_[lv-1][0]->PutPacket(sgrs1_output, 1);                  
+                  single_reduction_switches_[lv-1][0]->PutPacket(sgrs1_output, 1);
+                  single_reduction_switches_[lv-1][0]->SetIDConnect(pos, 1);
                 }
               }
 
@@ -183,20 +206,32 @@ namespace MAERI {
 
               if(lv > 1) {
                 auto dbrs_lEdgeOutput = double_reduction_switches_[lv][0]->GetPacket(0);
+                int pos = pow(reverse_level, 2) - 1 + 2*1*pow(reverse_level, 2);
+                inorder_double_reduction_swtiches.insert(make_pair(pos, make_pair(lv, 0)));
+
+                //int pos_R = pow(reverse_level, 2) - 1 + 2*2*pow(reverse_level, 2);
+                //inorder_double_reduction_swtiches.insert(make_pair(pos, make_pair(lv, 0)));
                 if(dbrs_lEdgeOutput != nullptr) {
 #ifdef DEBUG
                   std::cout << "DBRS[" << lv << "][0]" << "Sends a packet to " << "SGRS[ " << lv -1 << "][0]" << std::endl;
 #endif
                   single_reduction_switches_[lv-1][0]->PutPacket(dbrs_lEdgeOutput, 1);
+                  single_reduction_switches_[lv-1][0]->SetIDConnect(pos, 1);
                 }
 
                 auto dbrs_rEdgeOutput = double_reduction_switches_[lv][num_dbrs_in_lv-1]->GetPacket(1);
+                //pos_L = pow(reverse_level, 2) - 1 + 2*(2 * num_dbrs_in_lv - 1)*pow(reverse_level, 2);
+                //inorder_double_reduction_swtiches.insert(make_pair(pos, make_pair(lv, num_dbrs_in_lv-1)));
+
+                pos = pow(reverse_level, 2) - 1 + 2*(2 * num_dbrs_in_lv)*pow(reverse_level, 2);
+                inorder_double_reduction_swtiches.insert(make_pair(pos, make_pair(lv, num_dbrs_in_lv-1)));
                 if(dbrs_rEdgeOutput != nullptr) {
 #ifdef DEBUG
                   std::cout << "DBRS[" << lv << "][" << num_dbrs_in_lv-1 << "]" << "Sends a packet to " << "SGRS[ " << lv -1 << "][1]" << std::endl;
                   std::cout <<"Packet: vnID: " << dbrs_rEdgeOutput->GetVNID() << ", vnSz: " << dbrs_rEdgeOutput->GetVNSize() << ", pSum: " << dbrs_rEdgeOutput->GetNumPSums() << std::endl;
 #endif
                   single_reduction_switches_[lv-1][1]->PutPacket(dbrs_rEdgeOutput, 0);
+                  single_reduction_switches_[lv-1][1]->SetIDConnect(pos, 0);
                 }
 
                 std::cout << std::endl;
@@ -211,11 +246,17 @@ namespace MAERI {
                     int targ_output_sw_port = (dbrs_inPrt+1) % 2;
 
                     auto packet = double_reduction_switches_[lv][targ_output_sw_id]->GetPacket(targ_output_sw_port);
+                    pos = pow(reverse_level, 2) - 1 + 2*(2 + dbrs_inPrt)*pow(reverse_level, 2);
+                    inorder_double_reduction_swtiches.insert(make_pair(pos, make_pair(lv, targ_output_sw_id)));
+
+                    //pos_R = pow(reverse_level, 2) - 1 + 2*(2 + dbrs_inPrt)*pow(reverse_level, 2);
+                    //inorder_double_reduction_swtiches.insert(make_pair(pos, make_pair(lv, targ_output_sw_id)));
                     if(packet != nullptr && !(targ_output_sw_id == 0 && targ_output_sw_port == 0) ) {
 #ifdef DEBUG
                       std::cout << "DBRS[" << lv << "][" << targ_output_sw_id << "] Sends a packet from port " << targ_output_sw_port << " to DBRS[" << lv-1 << "][" << targ_input_sw_id << "] port" << targ_input_sw_port << std::endl;
 #endif
                       double_reduction_switches_[lv-1][targ_input_sw_id]->PutPacket(packet, targ_input_sw_port);
+                      double_reduction_switches_[lv-1][targ_input_sw_id]->SetIDConnect(pos, targ_input_sw_port);
                     }
 
                   } // End of for(int dbrs_inPrt = 0; dbrs_inPrt < num_dbrs_inPrt_in_prev_lv; dbrs_inPrt++)
@@ -225,6 +266,39 @@ namespace MAERI {
           } // end of for (lv = num_levels_-1; lv>=0; lv--)
 
           std::cout << "Finished processing reduction network information" << std::endl;
+
+          /*int num_adder_switches = 0;
+          for (int level = 0; level < num_levels_; level--) {
+            num_adder_switches += pow(level, 2);
+          }
+
+          auto sgrs_config = this->GetSGRS_Config();
+          auto dbrs_config = this->GetDBRS_Config();
+
+          int sgrs_count = 0;
+          for(auto it: *sgrs_config) {
+            std::cout << "SGRS[" << sgrs_count << "]: " << it->ToString() << std::endl;
+            if (sgrs_count == 0) {
+              inorder_single_reduction_swtiches.insert(pair<int, int>(num_adder_switches / 2, 0));
+            } else {
+              int level = num_levels_ - (sgrs_count + 1) / 2 - 1;
+              int pos = sgrs_count % 2;
+              if (pos == 1) {
+                int inorder_id = pow(level, 2) - 1;
+                inorder_single_reduction_swtiches.insert(pair<int, int>(inorder_id, 0));
+              } else {
+                int inorder_id = pow(level, 2) - 1 + 2 * pos * pow(level, 2);
+                inorder_single_reduction_swtiches.insert(pair<int, int>(inorder_id, 0));
+              }
+            }
+            sgrs_count++;
+          }
+
+          int dbrs_count = 0;
+          for(auto it: *dbrs_config) {
+            std::cout << "DBRS[" << dbrs_count << "]: " << it->ToString() << std::endl;
+            dbrs_count++;
+          }*/
         }
 
         int GetNumDBRS(int target_level) {
@@ -279,6 +353,14 @@ namespace MAERI {
           }
 
           return dbrs_configs;
+        }
+
+        std::shared_ptr<std::map<int, std::pair<int, int>>> GetSGRS_Inorder_Map() {
+          return inorder_single_reduction_swtiches;
+        }
+
+        std::shared_ptr<std::map<int, std::pair<int, int>>> GetDBRS_Inorder_Map() {
+          return inorder_double_reduction_swtiches;
         }
 
     }; // End of class AbstractReductionNetwork

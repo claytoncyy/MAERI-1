@@ -60,9 +60,96 @@ namespace MAERI {
           outputFile_ << "@000\n";
         }
 
+        void WriteVN_Config(std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DBRS_Config>>> DBRS_config,
+                            std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::SGRS_Config>>> SGRS_config,
+                            std::shared_ptr<std::map<int, std::pair<int, int>>> DBRS_mapping,
+                            std::shared_ptr<std::map<int, std::pair<int, int>>> SGRS_mapping) {
+          int count;
+          std::string line = "";
+          for (int i = 0; i < DBRS_mapping.size() + SGRS_mapping.size(); i++) {
+            auto find_SGRS = SGRS_mapping.find(i);
+            if (find_SGRS != SGRS_mapping.end()) {
+              int level = std::get<0>(SGRS_mapping[i]);
+              int pos = std::get<1>(SGRS_mapping[i]);
+              line.insert(0, WriteRN_SGRS_One(SGRS_config->single_reduction_switches_[level][pos]));
+            } else {
+              int level = std::get<0>(DBRS_mapping[i]);
+              int pos = std::get<1>(DBRS_mapping[i]);
+              // if 找到左边id对应同样dw，走右路，否则走左路 
+              line.insert(0, WriteRN_DBRS_One(DBRS_config->double_reduction_switches_[level][pos]));
+            }
+          }
+
+          if(count == 7) {
+                //Flush
+            std::string flush_str = bin2hex.GetHexString(line);
+            outputFile_ << flush_str + "\n";
+            line = "";
+            count = 0;
+          } else {
+            count++;
+          }
+
+        }
+
+        void WriteRN_SGRS_One(std::shared_ptr<<MAERI::ReductionNetwork::SGRS_Config>> it) {
+          std::string line = "";
+          auto modeL = it->modeL_;
+          auto modeR = it->modeR_;
+          auto genOutputL = it->genOutputL_;
+          auto genOutputR = it->genOutputR_;
+          line.insert(0, ISA::DBRS_MODE_PADDING);
+          if(genOutputR) {
+            line.insert(0, "1");
+          }
+          else {
+            line.insert(0, "0");
+          }
+          if(genOutputL) {
+            line.insert(0, "1");
+          }
+          else {
+            line.insert(0, "0");
+          }
+          switch(modeR) {
+            case ReductionNetwork::DBRS_SubMode::Idle:
+              line.insert(0, ISA::DBRS_MODE_IDLE);
+              break;
+            case ReductionNetwork::DBRS_SubMode::AddOne:
+              line.insert(0, ISA::DBRS_MODE_ADDONE);
+              break;
+            case ReductionNetwork::DBRS_SubMode::AddTwo:
+              line.insert(0, ISA::DBRS_MODE_ADDTWO);
+              break;
+            case ReductionNetwork::DBRS_SubMode::AddThree:
+              line.insert(0, ISA::DBRS_MODE_ADDTHREE);
+              break;
+            default:
+              line.insert(0, ISA::DBRS_MODE_PADDING);
+              break;
+          }
+          switch(modeL) {
+            case ReductionNetwork::DBRS_SubMode::Idle:
+              line.insert(0, ISA::DBRS_MODE_IDLE);
+              break;
+            case ReductionNetwork::DBRS_SubMode::AddOne:
+              line.insert(0, ISA::DBRS_MODE_ADDONE);
+              break;
+            case ReductionNetwork::DBRS_SubMode::AddTwo:
+              line.insert(0, ISA::DBRS_MODE_ADDTWO);
+              break;
+            case ReductionNetwork::DBRS_SubMode::AddThree:
+              line.insert(0, ISA::DBRS_MODE_ADDTHREE);
+              break;
+            default:
+              line.insert(0, ISA::DBRS_MODE_PADDING);
+              break;
+          }
+        }
+
         void WriteRN_DBRS_Config(std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DBRS_Config>>> config) {
           std::string line = "";
-
+          auto modeeee = config->double_reduction_switches_[0][0];
           int count = 0;
           for(auto it: *config) {
             auto modeL = it->modeL_;
