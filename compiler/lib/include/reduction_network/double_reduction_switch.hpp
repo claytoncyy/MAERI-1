@@ -275,6 +275,22 @@ namespace MAERI {
           return modeR_;
         }
 
+        int GetInput_ID_LL() {
+          return input_ID_LL_;
+        }
+
+        int GetInput_ID_LR() {
+          return input_ID_LR_;
+        }
+
+        int GetInput_ID_RL() {
+          return input_ID_RL_;
+        }
+
+        int GetInput_ID_RR() {
+          return input_ID_RR_;
+        }
+
     };
   };
 };

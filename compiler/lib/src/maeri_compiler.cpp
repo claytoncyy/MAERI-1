@@ -48,11 +48,11 @@ int main(int argc, char* argv[]) {
   ars->ProcessAbstractReductionNetwork();
   ars->PrintConfig();
 
-  auto dbrsConfig = ars->GetDBRS_Config();
+  auto dbrsConfig = ars->GetDBRS_Switches();
   auto mapping_DBRS = ars->GetDBRS_Inorder_Map();
   //outputFileWriter.WriteRN_DBRS_Config(dbrsConfig);
 
-  auto sgrsConfig = ars->GetSGRS_Config();
+  auto sgrsConfig = ars->GetSGRS_Switches();
   auto mapping_SGRS = ars->GetSGRS_Inorder_Map();
 
   int numLvs = static_cast<int>(log2(numMultSwitches));

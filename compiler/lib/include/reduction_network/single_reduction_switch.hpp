@@ -176,6 +176,14 @@ namespace MAERI {
           return mode_;
         }
 
+        int GetInput_ID_L() {
+          return input_ID_L_;
+        }
+
+        int GetInput_ID_R() {
+          return input_ID_R_;
+        }
+
     };
   }; // End of namespace ReductionNetwork
 }; // End of namespace MAERI

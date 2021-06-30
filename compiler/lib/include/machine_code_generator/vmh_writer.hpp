@@ -61,24 +61,26 @@ namespace MAERI {
           outputFile_ << "@000\n";
         }
 
-        void WriteVN_Config(std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DBRS_Config>>> DBRS_config,
-                            std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::SGRS_Config>>> SGRS_config,
-                            std::shared_ptr<std::map<int, std::pair<int, int>>> DBRS_mapping,
-                            std::shared_ptr<std::map<int, std::pair<int, int>>> SGRS_mapping,
+        void WriteVN_Config(std::vector<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DoubleReductionSwitch>>> double_reduction_switches_,
+                            std::vector<std::vector<std::shared_ptr<MAERI::ReductionNetwork::SingleReductionSwitch>>> single_reduction_switches_,
+                            std::map< int, std::pair<int, int> > DBRS_mapping,
+                            std::map< int, std::pair<int, int> > SGRS_mapping,
                             int num_levels) {
           std::stack<int> stack;
           stack.push(num_levels / 2);
           std::string line = "";
+          int count = 0;
 
           while (!stack.empty()) {
-            int id = stack.pop();
+            int id = stack.top();
+            stack.pop();
             auto find_SGRS = SGRS_mapping.find(id);
             if (find_SGRS != SGRS_mapping.end()) {
               int level = std::get<0>(SGRS_mapping[id]);
               int pos = std::get<1>(SGRS_mapping[id]);
-              line.insert(0, WriteRN_SGRS_One(SGRS_config->single_reduction_switches_[level][pos]));
-              stack.push(SGRS_config->single_reduction_switches_[level][pos]->input_ID_L_);
-              stack.push(SGRS_config->single_reduction_switches_[level][pos]->input_ID_R_);
+              line.insert(0, WriteRN_SGRS_One(single_reduction_switches_[level][pos]));
+              stack.push(single_reduction_switches_[level][pos]->GetInput_ID_L());
+              stack.push(single_reduction_switches_[level][pos]->GetInput_ID_R());
             } else {
               auto find_DBRS = DBRS_mapping.find(id);
               if (find_DBRS != DBRS_mapping.end()) {
@@ -90,23 +92,36 @@ namespace MAERI {
                 if (find_DBRS_left != DBRS_mapping.end()) {
                   int pos_left = std::get<1>(DBRS_mapping[inorder_id_left]);
                   if (pos == pos_left) {
-                    line.insert(0, WriteRN_DBRS_Right(DBRS_config->double_reduction_switches_[level][pos]));
-                    stack.push(DBRS_config->double_reduction_switches_[level][pos]->input_ID_RL_);
-                    stack.push(DBRS_config->double_reduction_switches_[level][pos]->input_ID_RR_);
+                    line.insert(0, WriteRN_DBRS_Right(double_reduction_switches_[level][pos]));
+                    stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RL());
+                    stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RR());
                   } else {
-                    line.insert(0, WriteRN_DBRS_Left(DBRS_config->double_reduction_switches_[level][pos])); 
-                    stack.push(DBRS_config->double_reduction_switches_[level][pos]->input_ID_LL_);
-                    stack.push(DBRS_config->double_reduction_switches_[level][pos]->input_ID_LR_);
+                    line.insert(0, WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
+                    stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
+                    stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                   }
                 }
               }
             }
+            if(count == 7) {
+              //Flush
+              //std::string flush_str = bin2hex.GetHexString(line);
+              outputFile_ << line + "\n";
+              line = "";
+              count = 0;
+            } else {
+              count++;
+            }
           }
 
-          while (line.size() >= 32) {
-            std::string flush_str = bin2hex.GetHexString(line.substr(0, 32));
-            outputFile_ << flush_str + "\n";
-            line = line.substr(32);
+          if(line != "") {
+            /*int remaining = 24 - line.length();
+            for(int pad = 0; pad < remaining; pad ++) {
+              line.insert(0, "0");
+            }*/
+
+            //std::string flush_str = bin2hex.GetHexString(line);
+            outputFile_ << line + "\n";
           }
 
         }
@@ -165,10 +180,10 @@ namespace MAERI {
 
         }*/
 
-        std::string WriteRN_SGRS_One(std::shared_ptr<<MAERI::ReductionNetwork::SGRS_Config>> it) {
+        std::string WriteRN_SGRS_One(std::shared_ptr<MAERI::ReductionNetwork::SingleReductionSwitch> it) {
           std::string line = "";
-          auto mode = it->mode_;
-          auto genOutput = it->genOutput_;
+          auto mode = it->GetMode();
+          auto genOutput = it->GetGenOutput();
           if(genOutput) {
             line.insert(0, "1");
           }
@@ -195,10 +210,10 @@ namespace MAERI {
           return line;
         }
 
-        std:string WriteRN_DBRS_Right(std::shared_ptr<<MAERI::ReductionNetwork::SGRS_Config>> it) {
+        std::string WriteRN_DBRS_Right(std::shared_ptr<MAERI::ReductionNetwork::DoubleReductionSwitch> it) {
           std::string line = "";
-          auto modeR = it->modeR_;
-          auto genOutputR = it->genOutputR_;
+          auto modeR = it->GetModeR();
+          auto genOutputR = it->GetGenOutputR();
           if(genOutputR) {
             line.insert(0, "1");
           }
@@ -225,10 +240,10 @@ namespace MAERI {
           return line;
         }
 
-        std:string WriteRN_DBRS_Left(std::shared_ptr<<MAERI::ReductionNetwork::SGRS_Config>> it) {
-           std::string line = "";
-          auto modeL = it->modeL_;
-          auto genOutputL = it->genOutputL_;
+        std::string WriteRN_DBRS_Left(std::shared_ptr<MAERI::ReductionNetwork::DoubleReductionSwitch> it) {
+          std::string line = "";
+          auto modeL = it->GetModeL();
+          auto genOutputL = it->GetGenOutputL();
           if(genOutputL) {
             line.insert(0, "1");
           }

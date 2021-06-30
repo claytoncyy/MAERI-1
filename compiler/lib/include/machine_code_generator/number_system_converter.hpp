@@ -39,13 +39,13 @@ namespace MAERI {
         std::string GetHexString(std::string binaryString) {
           std::string one = "1";
           std::string ret = "";
-          if(binaryString.length() != 32) {
+          if(binaryString.length() != 24) {
             std::cout << "GetHexString: input binary must be 32-bit data" << std::endl;
             return ret;
           }
 
           int sum = 0;
-          for(int digit = 0; digit < 32; digit++) {
+          for(int digit = 0; digit < 24; digit++) {
             if(binaryString.substr(digit, 1) == one) {
               sum += 8 / pow(2, digit % 4);
             }
