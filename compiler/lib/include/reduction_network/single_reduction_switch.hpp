@@ -43,6 +43,8 @@ namespace MAERI {
         bool genOutput_;
 
         SGRS_Mode mode_ = SGRS_Mode::Idle;
+        int input_ID_L_;
+        int input_ID_R_;
 
         std::vector<std::shared_ptr<CompilePacket>> input_packets_;
         std::vector<std::shared_ptr<CompilePacket>> output_packets_;
@@ -62,6 +64,14 @@ namespace MAERI {
           for(int injCount = 0; injCount < 1; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();
             output_packets_.push_back(invalid_packet);
+          }
+        }
+
+        void SetIDConnect(int ID, int pos) {
+          if (pos == 0) {
+            input_ID_L_ = ID;
+          } else {
+            input_ID_R_ = ID;
           }
         }
 

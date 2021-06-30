@@ -46,6 +46,11 @@ namespace MAERI {
         bool genOutputL_;
         bool genOutputR_;
 
+        int input_ID_LL_;
+        int input_ID_LR_;
+        int input_ID_RL_;
+        int input_ID_RR_;
+
         DBRS_SubMode modeL_ = DBRS_SubMode::Idle;
         DBRS_SubMode modeR_ = DBRS_SubMode::Idle;
 
@@ -69,6 +74,25 @@ namespace MAERI {
           for(int injCount = 0; injCount < 2; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();
             output_packets_.push_back(invalid_packet);
+          }
+        }
+
+        void SetIDConnect(int ID, int pos) {
+          switch(ID) {
+            case 3:
+              input_ID_RR_ = ID;
+              break;
+            case 2:
+              input_ID_RL_ = ID;
+              break;
+            case 1:
+              input_ID_LR_ = ID;
+              break;
+            case 0:
+              input_ID_LL_ = ID;
+              break;
+            default:
+              return;
           }
         }
 
