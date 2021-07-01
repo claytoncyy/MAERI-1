@@ -57,7 +57,8 @@ int main(int argc, char* argv[]) {
 
   int numLvs = static_cast<int>(log2(numMultSwitches));
   //outputFileWriter.WriteRN_SGRS_Config(sgrsConfig);
-  outputFileWriter.WriteVN_Config(dbrsConfig, sgrsConfig, mapping_DBRS, mapping_SGRS, numLvs);
+  int num_adder_switches = numMultSwitches - 1;
+  outputFileWriter.WriteVN_Config(dbrsConfig, sgrsConfig, mapping_DBRS, mapping_SGRS, numLvs, num_adder_switches);
 
   maestro::LayerParser layerParser(argv[3]);
 

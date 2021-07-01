@@ -54,7 +54,9 @@ namespace MAERI {
 
         SingleReductionSwitch() :
           genOutput_(false),
-          mode_(SGRS_Mode::Idle)
+          mode_(SGRS_Mode::Idle),
+          input_ID_L_(-1),
+          input_ID_R_(-1)
         {
           for(int injCount = 0; injCount < 2; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();

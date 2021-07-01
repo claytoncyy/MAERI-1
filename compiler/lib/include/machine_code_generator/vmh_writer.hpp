@@ -28,6 +28,7 @@ Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
 #include <fstream>
 #include <memory>
 #include <stack>
+#include <utility>
 
 #include "switch_modes.hpp"
 #include "encoding_table.hpp"
@@ -63,43 +64,65 @@ namespace MAERI {
 
         void WriteVN_Config(std::vector<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DoubleReductionSwitch>>> double_reduction_switches_,
                             std::vector<std::vector<std::shared_ptr<MAERI::ReductionNetwork::SingleReductionSwitch>>> single_reduction_switches_,
-                            std::map< int, std::pair<int, int> > DBRS_mapping,
-                            std::map< int, std::pair<int, int> > SGRS_mapping,
-                            int num_levels) {
+                            std::map<int, std::pair<int, int>> DBRS_mapping,
+                            std::map<int, std::pair<int, int>> SGRS_mapping,
+                            int num_levels,
+                            int num_adder_switches) {
           std::stack<int> stack;
-          stack.push(num_levels / 2);
+          stack.push(num_adder_switches / 2);
           std::string line = "";
           int count = 0;
-
+          std::cout << "Enter config write" << std::endl;
+          std::cout << "numLvs: " << num_levels << ", num_adder_switches: " << num_adder_switches << std::endl;
           while (!stack.empty()) {
             int id = stack.top();
             stack.pop();
-            auto find_SGRS = SGRS_mapping.find(id);
-            if (find_SGRS != SGRS_mapping.end()) {
+            if (id == -1) {
+              continue;
+            }
+            std::cout << "id:" << id << std::endl;
+            std::map<int, std::pair<int, int>>::iterator it;
+            it = SGRS_mapping.find(id);
+            if (it != SGRS_mapping.end()) {
               int level = std::get<0>(SGRS_mapping[id]);
               int pos = std::get<1>(SGRS_mapping[id]);
-              line.insert(0, WriteRN_SGRS_One(single_reduction_switches_[level][pos]));
+              std::cout << "Level & position:" << level << ", " << pos << std::endl;
+              line.append(WriteRN_SGRS_One(single_reduction_switches_[level][pos]));
+              std::cout << "ID_L: " << single_reduction_switches_[level][pos]->GetInput_ID_L() << std::endl;
+              std::cout << "ID_R: " << single_reduction_switches_[level][pos]->GetInput_ID_R() << std::endl;
               stack.push(single_reduction_switches_[level][pos]->GetInput_ID_L());
               stack.push(single_reduction_switches_[level][pos]->GetInput_ID_R());
             } else {
-              auto find_DBRS = DBRS_mapping.find(id);
-              if (find_DBRS != DBRS_mapping.end()) {
+              it = DBRS_mapping.find(id);
+              if (it != DBRS_mapping.end()) {
                 int level = std::get<0>(DBRS_mapping[id]);
-                int pos = std::get<1>(DBRS_mapping[id]);
-
-                int inorder_id_left = id - 2 * pow(num_levels - 1 - level, 2);
-                auto find_DBRS_left = DBRS_mapping.find(inorder_id_left);
-                if (find_DBRS_left != DBRS_mapping.end()) {
+                int pos = std::get<1>(DBRS_mapping[id]);  
+                std::cout << "DBRS Level & position:" << level << ", " << pos << std::endl;
+                int inorder_id_left = id - 2 * pow(2, num_levels - 1 - level);
+                it = DBRS_mapping.find(inorder_id_left);
+                std::map<int, std::pair<int, int>>::iterator it_left = SGRS_mapping.find(inorder_id_left);
+                std::cout << "inorder_id_left: " << inorder_id_left << std::endl;
+                if (it != DBRS_mapping.end()) {
                   int pos_left = std::get<1>(DBRS_mapping[inorder_id_left]);
                   if (pos == pos_left) {
-                    line.insert(0, WriteRN_DBRS_Right(double_reduction_switches_[level][pos]));
+                    line.append(WriteRN_DBRS_Right(double_reduction_switches_[level][pos]));
+                    std::cout << "ID_RL: " << double_reduction_switches_[level][pos]->GetInput_ID_RL() << std::endl;
+                    std::cout << "ID_RR: " << double_reduction_switches_[level][pos]->GetInput_ID_RR() << std::endl;
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RR());
                   } else {
-                    line.insert(0, WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
+                    line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
+                    std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
+                    std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                   }
+                } else if (it_left != SGRS_mapping.end()) {
+                  line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
+                  std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
+                  std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+                  stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
+                  stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                 }
               }
             }
@@ -185,28 +208,29 @@ namespace MAERI {
           auto mode = it->GetMode();
           auto genOutput = it->GetGenOutput();
           if(genOutput) {
-            line.insert(0, "1");
+            line.append("1");
           }
           else {
-            line.insert(0, "0");
+            line.append("0");
           }
           switch(mode) {
             case ReductionNetwork::SGRS_Mode::Idle:
-              line.insert(0, ISA::SGRS_MODE_IDLE);
+              line.append(ISA::SGRS_MODE_IDLE);
               break;
             case ReductionNetwork::SGRS_Mode::AddTwo:
-              line.insert(0, ISA::SGRS_MODE_ADDTWO);
+              line.append(ISA::SGRS_MODE_ADDTWO);
               break;
             case ReductionNetwork::SGRS_Mode::FlowLeft:
-              line.insert(0, ISA::SGRS_MODE_FLOWLEFT);
+              line.append(ISA::SGRS_MODE_FLOWLEFT);
               break;
             case ReductionNetwork::SGRS_Mode::FlowRight:
-              line.insert(0, ISA::SGRS_MODE_FLOWRIGHT);
+              line.append(ISA::SGRS_MODE_FLOWRIGHT);
               break;
             default:
-              line.insert(0, ISA::SGRS_MODE_IDLE);
+              line.append(ISA::SGRS_MODE_IDLE);
               break;
           }
+          std::cout << "SGRS Command:" << line << std::endl;
           return line;
         }
 
@@ -215,28 +239,29 @@ namespace MAERI {
           auto modeR = it->GetModeR();
           auto genOutputR = it->GetGenOutputR();
           if(genOutputR) {
-            line.insert(0, "1");
+            line.append("1");
           }
           else {
-            line.insert(0, "0");
+            line.append("0");
           }
           switch(modeR) {
             case ReductionNetwork::DBRS_SubMode::Idle:
-              line.insert(0, ISA::DBRS_MODE_IDLE);
+              line.append(ISA::DBRS_MODE_IDLE);
               break;
             case ReductionNetwork::DBRS_SubMode::AddOne:
-              line.insert(0, ISA::DBRS_MODE_ADDONE);
+              line.append(ISA::DBRS_MODE_ADDONE);
               break;
             case ReductionNetwork::DBRS_SubMode::AddTwo:
-              line.insert(0, ISA::DBRS_MODE_ADDTWO);
+              line.append(ISA::DBRS_MODE_ADDTWO);
               break;
             case ReductionNetwork::DBRS_SubMode::AddThree:
-              line.insert(0, ISA::DBRS_MODE_ADDTHREE);
+              line.append(ISA::DBRS_MODE_ADDTHREE);
               break;
             default:
-              line.insert(0, ISA::DBRS_MODE_PADDING);
+              line.append(ISA::DBRS_MODE_IDLE);
               break;
           }
+          std::cout << "DBRS_R Command:" << line << std::endl;
           return line;
         }
 
@@ -245,28 +270,29 @@ namespace MAERI {
           auto modeL = it->GetModeL();
           auto genOutputL = it->GetGenOutputL();
           if(genOutputL) {
-            line.insert(0, "1");
+            line.append("1");
           }
           else {
-            line.insert(0, "0");
+            line.append("0");
           }
           switch(modeL) {
             case ReductionNetwork::DBRS_SubMode::Idle:
-              line.insert(0, ISA::DBRS_MODE_IDLE);
+              line.append(ISA::DBRS_MODE_IDLE);
               break;
             case ReductionNetwork::DBRS_SubMode::AddOne:
-              line.insert(0, ISA::DBRS_MODE_ADDONE);
+              line.append(ISA::DBRS_MODE_ADDONE);
               break;
             case ReductionNetwork::DBRS_SubMode::AddTwo:
-              line.insert(0, ISA::DBRS_MODE_ADDTWO);
+              line.append(ISA::DBRS_MODE_ADDTWO);
               break;
             case ReductionNetwork::DBRS_SubMode::AddThree:
-              line.insert(0, ISA::DBRS_MODE_ADDTHREE);
+              line.append(ISA::DBRS_MODE_ADDTHREE);
               break;
             default:
-              line.insert(0, ISA::DBRS_MODE_PADDING);
+              line.append(ISA::DBRS_MODE_PADDING);
               break;
           }
+          std::cout << "DBRS_L Command:" << line << std::endl;
           return line;
         }
 

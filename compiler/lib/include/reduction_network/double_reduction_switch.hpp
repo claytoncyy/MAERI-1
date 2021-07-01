@@ -78,7 +78,7 @@ namespace MAERI {
         }
 
         void SetIDConnect(int ID, int pos) {
-          switch(ID) {
+          switch(pos) {
             case 3:
               input_ID_RR_ = ID;
               break;
