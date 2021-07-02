@@ -135,6 +135,7 @@ namespace MAERI {
             } else {
               count++;
             }
+            std::cout << std::endl;
           }
 
           if(line != "") {
@@ -146,6 +147,7 @@ namespace MAERI {
             //std::string flush_str = bin2hex.GetHexString(line);
             outputFile_ << line + "\n";
           }
+          std::cout << std::endl;
 
         }
 

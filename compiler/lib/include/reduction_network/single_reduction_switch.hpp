@@ -43,8 +43,8 @@ namespace MAERI {
         bool genOutput_;
 
         SGRS_Mode mode_ = SGRS_Mode::Idle;
-        int input_ID_L_;
-        int input_ID_R_;
+        int input_ID_L_ = -1;
+        int input_ID_R_ = -1;
 
         std::vector<std::shared_ptr<CompilePacket>> input_packets_;
         std::vector<std::shared_ptr<CompilePacket>> output_packets_;
@@ -119,6 +119,7 @@ namespace MAERI {
           for(auto inPkt : input_packets_) {
             if(inPkt->IsValid() && inPkt->GetVNID() == vn_L) {
               vn_L_num_accumulated_psums += inPkt->GetNumPSums();
+              std::cout << vn_L_num_accumulated_psums << std::endl;
               vn_L_num_packets++;
             }
             else if(inPkt->IsValid() && inPkt->GetVNID() == vn_R) {
@@ -158,7 +159,11 @@ namespace MAERI {
 #ifdef DEBUG
             std::cout << "SGRS " << switch_id << " Sends out a packet with vnID: " << vn_L << ", vn_size: " << vn_L_size << ", pSums: " << vn_L_num_accumulated_psums << std::endl;
 #endif
-            output_packets_[0] = std::make_shared<CompilePacket>(vn_L, vn_L_size, vn_L_num_accumulated_psums);
+            if(vn_L_size == 1 && vn_L_size == vn_L_num_accumulated_psums) {
+              genOutput_ = true;
+            } else {
+              output_packets_[0] = std::make_shared<CompilePacket>(vn_L, vn_L_size, vn_L_num_accumulated_psums);
+            }
           }
           else {
             mode_ = SGRS_Mode::Idle;

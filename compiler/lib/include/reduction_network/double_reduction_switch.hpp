@@ -64,7 +64,11 @@ namespace MAERI {
           genOutputL_(false),
           genOutputR_(false),
           modeL_(DBRS_SubMode::Idle),
-          modeR_(DBRS_SubMode::Idle)
+          modeR_(DBRS_SubMode::Idle),
+          input_ID_LL_(-1),
+          input_ID_LR_(-1),
+          input_ID_RL_(-1),
+          input_ID_RR_(-1)
         {
           for(int injCount = 0; injCount < 4; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();
@@ -238,7 +242,7 @@ namespace MAERI {
               output_packets_[0] = outL;
             }
           }
-
+          std::cout << vn_R << ", AND " << vn_R_num_accumulated_psums << std::endl; 
           if(vn_R != -1 || modeR_ == DBRS_SubMode::AddTwo) {
             if(vn_R_size == vn_R_num_accumulated_psums) {
               genOutputR_ = true;

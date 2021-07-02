@@ -32,16 +32,19 @@ Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
 
 int main(int argc, char* argv[]) {
 
-  if(argc != 4) {
-    std::cout << "Usage: ./(ExeFile) (NumMultSwitches) (VNSize) (LayerFileName)" << std::endl;
+  if(argc != 5) {
+    std::cout << "Usage: ./(ExeFile) (NumMultSwitches) (VNSize) (VNNum) (LayerFileName)" << std::endl;
     return 0;
   }
 
   int numMultSwitches = atoi(argv[1]);
-  int vn_size = atoi(argv[2]);
-  int num_mapped_vns = numMultSwitches / vn_size;
+  int vn_size = 4;
+  int num_mapped_vns = 4;
+  //int vn_size = atoi(argv[2]);
+  //int num_mapped_vns = atoi(argv[3]);
+  //int num_mapped_vns = numMultSwitches / vn_size;
 
-  auto ars = std::make_shared<MAERI::ReductionNetwork::AbstractReductionNetwork>(numMultSwitches, vn_size);
+  auto ars = std::make_shared<MAERI::ReductionNetwork::AbstractReductionNetwork>(numMultSwitches, vn_size, num_mapped_vns);
 
   MAERI::MachineCodeGenerator::RNConfigWriter outputFileWriter("RN_Config.vmh");
 
@@ -60,7 +63,7 @@ int main(int argc, char* argv[]) {
   int num_adder_switches = numMultSwitches - 1;
   outputFileWriter.WriteVN_Config(dbrsConfig, sgrsConfig, mapping_DBRS, mapping_SGRS, numLvs, num_adder_switches);
 
-  maestro::LayerParser layerParser(argv[3]);
+  maestro::LayerParser layerParser(argv[4]);
 
   auto layerInfo = layerParser.ParseLayer();
   std::cout << "Parse finished" << std::endl;
