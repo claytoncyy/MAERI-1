@@ -38,8 +38,8 @@ int main(int argc, char* argv[]) {
   }
 
   int numMultSwitches = atoi(argv[1]);
-  int vn_size = 3;
-  int num_mapped_vns = 4;
+  int vn_size = 6;
+  int num_mapped_vns = 2;
   //int vn_size = atoi(argv[2]);
   //int num_mapped_vns = atoi(argv[3]);
   //int num_mapped_vns = numMultSwitches / vn_size;
