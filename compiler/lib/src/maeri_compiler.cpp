@@ -33,7 +33,7 @@ Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
 int main(int argc, char* argv[]) {
 
   if(argc != 5) {
-    std::cout << "Usage: ./(ExeFile) (NumMultSwitches) (VNSize) (VNNum) (LayerFileName)" << std::endl;
+    std::cout << "Usage: ./(ExeFile) (NumMultSwitches) (VNSize) (VNNum) (NonUniform) (LayerFileName)" << std::endl;
     return 0;
   }
 
@@ -42,6 +42,7 @@ int main(int argc, char* argv[]) {
   int num_mapped_vns = 2;
   //int vn_size = atoi(argv[2]);
   //int num_mapped_vns = atoi(argv[3]);
+  int non_uniform = atoi(argv[4]);
   //int num_mapped_vns = numMultSwitches / vn_size;
 
   auto ars = std::make_shared<MAERI::ReductionNetwork::AbstractReductionNetwork>(numMultSwitches, vn_size, num_mapped_vns);
@@ -63,7 +64,7 @@ int main(int argc, char* argv[]) {
   int num_adder_switches = numMultSwitches - 1;
   outputFileWriter.WriteVN_Config(dbrsConfig, sgrsConfig, mapping_DBRS, mapping_SGRS, numLvs, num_adder_switches);
 
-  maestro::LayerParser layerParser(argv[4]);
+  maestro::LayerParser layerParser(argv[5]);
 
   auto layerInfo = layerParser.ParseLayer();
   std::cout << "Parse finished" << std::endl;

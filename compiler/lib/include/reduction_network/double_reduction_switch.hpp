@@ -51,6 +51,10 @@ namespace MAERI {
         int input_ID_RL_;
         int input_ID_RR_;
 
+        int vn_nums;
+        int free_ports;
+        int vns[2];
+
         DBRS_SubMode modeL_ = DBRS_SubMode::Idle;
         DBRS_SubMode modeR_ = DBRS_SubMode::Idle;
 
@@ -68,7 +72,9 @@ namespace MAERI {
           input_ID_LL_(-1),
           input_ID_LR_(-1),
           input_ID_RL_(-1),
-          input_ID_RR_(-1)
+          input_ID_RR_(-1),
+          vn_nums(0)，
+          free_ports(4)
         {
           for(int injCount = 0; injCount < 4; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();
@@ -78,6 +84,10 @@ namespace MAERI {
           for(int injCount = 0; injCount < 2; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();
             output_packets_.push_back(invalid_packet);
+          }
+
+          for (int i = 0; i < 2; i++) {
+            vns[i] = -1;
           }
         }
 
@@ -103,6 +113,15 @@ namespace MAERI {
         void PutPacket(std::shared_ptr<CompilePacket> inPacket, int port) {
           if(port < 4) {
             input_packets_[port] = inPacket;
+            free_ports -= 1;
+            int vn_id = inPacket->GetVNID();
+            if (vn_nums == 0) {
+              vns[0] = vn_id;
+              vn_nums++;
+            } else if (vn_nums == 1 && vn_id != vns[0]) {
+              vns[1] = vn_id;
+              vn_nums++;
+            }
           }
         }
 
@@ -293,6 +312,18 @@ namespace MAERI {
 
         int GetInput_ID_RR() {
           return input_ID_RR_;
+        }
+
+        int GetVN_Nums() {
+          return vn_nums;
+        }
+
+        int GetFreePorts() {
+          return free_ports;
+        }
+
+        bool CheckIfSameID(int vn_id) {
+          return vn_id == vns[0] || vn_id == vns[1];
         }
 
     };

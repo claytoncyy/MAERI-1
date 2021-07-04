@@ -46,6 +46,10 @@ namespace MAERI {
         int input_ID_L_ = -1;
         int input_ID_R_ = -1;
 
+        int vn_nums;
+        int free_ports;
+        int vn;
+
         std::vector<std::shared_ptr<CompilePacket>> input_packets_;
         std::vector<std::shared_ptr<CompilePacket>> output_packets_;
 
@@ -56,7 +60,10 @@ namespace MAERI {
           genOutput_(false),
           mode_(SGRS_Mode::Idle),
           input_ID_L_(-1),
-          input_ID_R_(-1)
+          input_ID_R_(-1),
+          vn_nums(0),
+          free_ports(2),
+          vn(-1)
         {
           for(int injCount = 0; injCount < 2; injCount++) {
             auto invalid_packet = std::make_shared<CompilePacket>();
@@ -80,6 +87,12 @@ namespace MAERI {
         void PutPacket(std::shared_ptr<CompilePacket> inPacket, int port) {
           if(port < 2) {
             input_packets_[port] = inPacket;
+            free_ports -= 1;
+            int vn_id = inPacket->GetVNID();
+            if (vn_nums == 0) {
+              vn = vn_id;
+              vn_nums++;
+            }
           }
         }
 
@@ -189,6 +202,18 @@ namespace MAERI {
 
         int GetInput_ID_R() {
           return input_ID_R_;
+        }
+
+        int GetVN_Nums() {
+          return vn_nums;
+        }
+
+        int GetFreePorts() {
+          return free_ports;
+        }
+
+        bool CheckIfSameID(int vn_id) {
+          return vn == vn_id;
         }
 
     };
