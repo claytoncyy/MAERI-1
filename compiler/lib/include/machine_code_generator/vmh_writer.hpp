@@ -16,7 +16,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
+Author : Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu)
 *******************************************************************************/
 
 #ifndef VMH_WRITER_H_
@@ -72,24 +72,23 @@ namespace MAERI {
           stack.push(num_adder_switches / 2);
           std::string line = "";
           int count = 0;
-          std::cout << "Enter config write" << std::endl;
-          std::cout << "numLvs: " << num_levels << ", num_adder_switches: " << num_adder_switches << std::endl;
+          //std::cout << "numLvs: " << num_levels << ", num_adder_switches: " << num_adder_switches << std::endl;
           while (!stack.empty()) {
             int id = stack.top();
             stack.pop();
             if (id == -1) {
               continue;
             }
-            std::cout << "id:" << id << std::endl;
+            //std::cout << "id:" << id << std::endl;
             std::map<int, std::pair<int, int>>::iterator it;
             it = SGRS_mapping.find(id);
             if (it != SGRS_mapping.end()) {
               int level = std::get<0>(SGRS_mapping[id]);
               int pos = std::get<1>(SGRS_mapping[id]);
-              std::cout << "Level & position:" << level << ", " << pos << std::endl;
+              //std::cout << "Level & position:" << level << ", " << pos << std::endl;
               line.append(WriteRN_SGRS_One(single_reduction_switches_[level][pos]));
-              std::cout << "ID_L: " << single_reduction_switches_[level][pos]->GetInput_ID_L() << std::endl;
-              std::cout << "ID_R: " << single_reduction_switches_[level][pos]->GetInput_ID_R() << std::endl;
+              //std::cout << "ID_L: " << single_reduction_switches_[level][pos]->GetInput_ID_L() << std::endl;
+              //std::cout << "ID_R: " << single_reduction_switches_[level][pos]->GetInput_ID_R() << std::endl;
               stack.push(single_reduction_switches_[level][pos]->GetInput_ID_L());
               stack.push(single_reduction_switches_[level][pos]->GetInput_ID_R());
             } else {
@@ -97,30 +96,30 @@ namespace MAERI {
               if (it != DBRS_mapping.end()) {
                 int level = std::get<0>(DBRS_mapping[id]);
                 int pos = std::get<1>(DBRS_mapping[id]);  
-                std::cout << "DBRS Level & position:" << level << ", " << pos << std::endl;
+                //std::cout << "DBRS Level & position:" << level << ", " << pos << std::endl;
                 int inorder_id_left = id - 2 * pow(2, num_levels - 1 - level);
                 it = DBRS_mapping.find(inorder_id_left);
                 std::map<int, std::pair<int, int>>::iterator it_left = SGRS_mapping.find(inorder_id_left);
-                std::cout << "inorder_id_left: " << inorder_id_left << std::endl;
+                //std::cout << "inorder_id_left: " << inorder_id_left << std::endl;
                 if (it != DBRS_mapping.end()) {
                   int pos_left = std::get<1>(DBRS_mapping[inorder_id_left]);
                   if (pos == pos_left) {
                     line.append(WriteRN_DBRS_Right(double_reduction_switches_[level][pos]));
-                    std::cout << "ID_RL: " << double_reduction_switches_[level][pos]->GetInput_ID_RL() << std::endl;
-                    std::cout << "ID_RR: " << double_reduction_switches_[level][pos]->GetInput_ID_RR() << std::endl;
+                    //std::cout << "ID_RL: " << double_reduction_switches_[level][pos]->GetInput_ID_RL() << std::endl;
+                    //std::cout << "ID_RR: " << double_reduction_switches_[level][pos]->GetInput_ID_RR() << std::endl;
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RR());
                   } else {
                     line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
-                    std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
-                    std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+                    //std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
+                    //std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                   }
                 } else if (it_left != SGRS_mapping.end()) {
                   line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
-                  std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
-                  std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+                  //std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
+                  //std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
                   stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
                   stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                 }
@@ -139,71 +138,11 @@ namespace MAERI {
           }
 
           if(line != "") {
-            /*int remaining = 24 - line.length();
-            for(int pad = 0; pad < remaining; pad ++) {
-              line.insert(0, "0");
-            }*/
-
-            //std::string flush_str = bin2hex.GetHexString(line);
             outputFile_ << line + "\n";
           }
           std::cout << std::endl;
 
         }
-
-        /*void WriteVN_Config(std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DBRS_Config>>> DBRS_config,
-                            std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::SGRS_Config>>> SGRS_config,
-                            std::shared_ptr<std::map<int, std::pair<int, int>>> DBRS_mapping,
-                            std::shared_ptr<std::map<int, std::pair<int, int>>> SGRS_mapping,
-                            int num_levels) {
-          int count;
-          std::string line = "";
-          for (int i = 0; i < DBRS_mapping.size() + SGRS_mapping.size(); i++) {
-            auto find_SGRS = SGRS_mapping.find(i);
-            if (find_SGRS != SGRS_mapping.end()) {
-              int level = std::get<0>(SGRS_mapping[i]);
-              int pos = std::get<1>(SGRS_mapping[i]);
-              line.insert(0, WriteRN_SGRS_One(SGRS_config->single_reduction_switches_[level][pos]));
-            } else {
-              auto find_DBRS = DBRS_mapping.find(i);
-              if (find_DBRS != DBRS_mapping.end()) {
-                int level = std::get<0>(DBRS_mapping[i]);
-                int pos = std::get<1>(DBRS_mapping[i]);
-
-                int inorder_id_left = i - 2 * pow(num_levels - 1 - level, 2);
-                auto find_DBRS_left = DBRS_mapping.find(inorder_id_left);
-                if (find_DBRS_left != DBRS_mapping.end()) {
-                  int pos_left = std::get<1>(DBRS_mapping[inorder_id_left]);
-                  if (pos == pos_left) {
-                    line.insert(0, WriteRN_DBRS_Right(DBRS_config->double_reduction_switches_[level][pos])); 
-                  } else {
-                    line.insert(0, WriteRN_DBRS_Left(DBRS_config->double_reduction_switches_[level][pos])); 
-                  }
-                }
-              }
-            }
-          }
-
-          std::string preorder_line = "";
-
-
-          while (line.size() >= 32) {
-            std::string flush_str = bin2hex.GetHexString(line.substr(0, 32));
-            outputFile_ << flush_str + "\n";
-            line = line.substr(32);
-          }
-
-          if(count == 7) {
-                //Flush
-            std::string flush_str = bin2hex.GetHexString(line);
-            outputFile_ << flush_str + "\n";
-            line = "";
-            count = 0;
-          } else {
-            count++;
-          }
-
-        }*/
 
         std::string WriteRN_SGRS_One(std::shared_ptr<MAERI::ReductionNetwork::SingleReductionSwitch> it) {
           std::string line = "";
@@ -232,7 +171,7 @@ namespace MAERI {
               line.append(ISA::SGRS_MODE_IDLE);
               break;
           }
-          std::cout << "SGRS Command:" << line << std::endl;
+          //std::cout << "SGRS Command:" << line << std::endl;
           return line;
         }
 
@@ -263,7 +202,7 @@ namespace MAERI {
               line.append(ISA::DBRS_MODE_IDLE);
               break;
           }
-          std::cout << "DBRS_R Command:" << line << std::endl;
+          //std::cout << "DBRS_R Command:" << line << std::endl;
           return line;
         }
 
@@ -294,156 +233,9 @@ namespace MAERI {
               line.append(ISA::DBRS_MODE_PADDING);
               break;
           }
-          std::cout << "DBRS_L Command:" << line << std::endl;
+          //std::cout << "DBRS_L Command:" << line << std::endl;
           return line;
         }
-
-        void WriteRN_DBRS_Config(std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::DBRS_Config>>> config) {
-          std::string line = "";
-          int count = 0;
-          for(auto it: *config) {
-            auto modeL = it->modeL_;
-            auto modeR = it->modeR_;
-            auto genOutputL = it->genOutputL_;
-            auto genOutputR = it->genOutputR_;
-
-            line.insert(0, ISA::DBRS_MODE_PADDING);
-
-            if(genOutputR) {
-              line.insert(0, "1");
-            }
-            else {
-              line.insert(0, "0");
-            }
-
-            if(genOutputL) {
-              line.insert(0, "1");
-            }
-            else {
-              line.insert(0, "0");
-            }
-
-
-            switch(modeR) {
-              case ReductionNetwork::DBRS_SubMode::Idle:
-                line.insert(0, ISA::DBRS_MODE_IDLE);
-                break;
-              case ReductionNetwork::DBRS_SubMode::AddOne:
-                line.insert(0, ISA::DBRS_MODE_ADDONE);
-                break;
-              case ReductionNetwork::DBRS_SubMode::AddTwo:
-                line.insert(0, ISA::DBRS_MODE_ADDTWO);
-                break;
-              case ReductionNetwork::DBRS_SubMode::AddThree:
-                line.insert(0, ISA::DBRS_MODE_ADDTHREE);
-                break;
-              default:
-                line.insert(0, ISA::DBRS_MODE_PADDING);
-                break;
-            }
-
-            switch(modeL) {
-              case ReductionNetwork::DBRS_SubMode::Idle:
-                line.insert(0, ISA::DBRS_MODE_IDLE);
-                break;
-              case ReductionNetwork::DBRS_SubMode::AddOne:
-                line.insert(0, ISA::DBRS_MODE_ADDONE);
-                break;
-              case ReductionNetwork::DBRS_SubMode::AddTwo:
-                line.insert(0, ISA::DBRS_MODE_ADDTWO);
-                break;
-              case ReductionNetwork::DBRS_SubMode::AddThree:
-                line.insert(0, ISA::DBRS_MODE_ADDTHREE);
-                break;
-              default:
-                line.insert(0, ISA::DBRS_MODE_PADDING);
-                break;
-            }
-
-
-            if(count == 3) {
-              //Flush
-              std::string flush_str = bin2hex.GetHexString(line);
-              outputFile_ << flush_str + "\n";
-              line = "";
-              count = 0;
-            }
-            else {
-              count++;
-            }
-          } // End of for(auto it: *config)
-
-          if(line != "") {
-            int remaining = 32 - line.length();
-            for(int pad = 0; pad < remaining; pad ++) {
-              line.insert(0, "0");
-            }
-
-            std::string flush_str = bin2hex.GetHexString(line);
-            outputFile_ << flush_str + "\n";
-          }
-
-        } // End of void WriteRN_DBRS_Config
-
-        void WriteRN_SGRS_Config(std::shared_ptr<std::vector<std::shared_ptr<MAERI::ReductionNetwork::SGRS_Config>>> config) {
-          std::string line = "";
-
-          int count = 0;
-          for(auto it: *config) {
-            auto mode = it->mode_;
-            auto genOutput = it->genOutput_;
-
-            line.insert(0, ISA::SGRS_MODE_PADDING);
-
-            if(genOutput) {
-              line.insert(0, "1");
-            }
-            else {
-              line.insert(0, "0");
-            }
-
-            switch(mode) {
-              case ReductionNetwork::SGRS_Mode::Idle:
-                line.insert(0, ISA::SGRS_MODE_IDLE);
-                break;
-              case ReductionNetwork::SGRS_Mode::AddTwo:
-                line.insert(0, ISA::SGRS_MODE_ADDTWO);
-                break;
-              case ReductionNetwork::SGRS_Mode::FlowLeft:
-                line.insert(0, ISA::SGRS_MODE_FLOWLEFT);
-                break;
-              case ReductionNetwork::SGRS_Mode::FlowRight:
-                line.insert(0, ISA::SGRS_MODE_FLOWRIGHT);
-                break;
-              default:
-                line.insert(0, ISA::SGRS_MODE_IDLE);
-                break;
-            }
-
-            if(count == 7) {
-              //Flush
-              std::string flush_str = bin2hex.GetHexString(line);
-              outputFile_ << flush_str + "\n";
-              line = "";
-              count = 0;
-            }
-            else {
-              count++;
-            }
-          } // End of for(auto it: *config)
-
-
-          if(line != "") {
-            int remaining = 32 - line.length();
-            for(int pad = 0; pad < remaining; pad ++) {
-              line.insert(0, "0");
-            }
-
-            std::string flush_str = bin2hex.GetHexString(line);
-            outputFile_ << flush_str + "\n";
-          }
-
-        }// End of void WriteRN_SGRS_Config
     }; // End of class RNConfigWriter
 
     class TileInfoWriter : public VmhWriter {

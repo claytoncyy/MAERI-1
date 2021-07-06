@@ -50,17 +50,16 @@ int main(int argc, char* argv[]) {
   MAERI::MachineCodeGenerator::RNConfigWriter outputFileWriter("RN_Config.vmh");
 
   ars->ProcessAbstractReductionNetwork();
-  ars->PrintConfig();
+  //ars->PrintConfig();
+  ars->PrintConfig_Inorder();
 
   auto dbrsConfig = ars->GetDBRS_Switches();
   auto mapping_DBRS = ars->GetDBRS_Inorder_Map();
-  //outputFileWriter.WriteRN_DBRS_Config(dbrsConfig);
 
   auto sgrsConfig = ars->GetSGRS_Switches();
   auto mapping_SGRS = ars->GetSGRS_Inorder_Map();
 
   int numLvs = static_cast<int>(log2(numMultSwitches));
-  //outputFileWriter.WriteRN_SGRS_Config(sgrsConfig);
   int num_adder_switches = numMultSwitches - 1;
   outputFileWriter.WriteVN_Config(dbrsConfig, sgrsConfig, mapping_DBRS, mapping_SGRS, numLvs, num_adder_switches);
 

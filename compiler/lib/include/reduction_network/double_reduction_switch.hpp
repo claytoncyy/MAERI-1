@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
+Author: Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu)
 
 *******************************************************************************/
 
@@ -34,9 +34,6 @@ Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
 #include "switch_modes.hpp"
 
 //#define DEBUG
-
-
-// Does not support vnsize = 2 and vnsize = 1
 
 namespace MAERI {
   namespace ReductionNetwork {
@@ -249,7 +246,6 @@ namespace MAERI {
 
           // Determine output packets and genOutputL
           if(vn_L != -1) {
-            std::cout << "DBRS: vn_L_size: " << vn_L_size << ", vn_L_num_accumulated_psums: " << vn_L_num_accumulated_psums << std::endl;
             if(vn_L_size == vn_L_num_accumulated_psums) {
               genOutputL_ = true;
             }
@@ -262,9 +258,7 @@ namespace MAERI {
               output_packets_[0] = outL;
             }
           }
-          std::cout << vn_R << ", AND " << vn_R_num_accumulated_psums << std::endl; 
           if(vn_R != -1 || modeR_ == DBRS_SubMode::AddTwo) {
-            std::cout << "DBRS: vn_R_size: " << vn_R_size << ", vn_R_num_accumulated_psums: " << vn_R_num_accumulated_psums << std::endl;
             if(vn_R_size == vn_R_num_accumulated_psums) {
               genOutputR_ = true;
             }

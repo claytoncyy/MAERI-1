@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
+Author: Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu)
 
 *******************************************************************************/
 
@@ -132,7 +132,6 @@ namespace MAERI {
           for(auto inPkt : input_packets_) {
             if(inPkt->IsValid() && inPkt->GetVNID() == vn_L) {
               vn_L_num_accumulated_psums += inPkt->GetNumPSums();
-              std::cout << vn_L_num_accumulated_psums << std::endl;
               vn_L_num_packets++;
             }
             else if(inPkt->IsValid() && inPkt->GetVNID() == vn_R) {
@@ -146,9 +145,6 @@ namespace MAERI {
 
 
           if(vn_L != -1 && vn_R != -1 && vn_L == vn_R) {
-          std::cout << "Num Accum PSumsL: " << vn_L_num_accumulated_psums << std::endl;
-          std::cout << "Num Accum PSumsR: " << vn_R_num_accumulated_psums << std::endl;
-            
             mode_ = SGRS_Mode::AddTwo;
             if(vn_L_size == vn_L_num_accumulated_psums) {
               genOutput_ = true;
@@ -206,10 +202,6 @@ namespace MAERI {
 
         int GetVN_Nums() {
           return vn_nums;
-        }
-
-        int GetFreePorts() {
-          return free_ports;
         }
 
         bool CheckIfSameID(int vn_id) {

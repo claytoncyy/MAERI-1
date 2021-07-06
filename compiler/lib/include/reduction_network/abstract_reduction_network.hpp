@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
+Author: Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu)
 
 *******************************************************************************/
 
@@ -47,6 +47,7 @@ namespace MAERI {
     class AbstractReductionNetwork {
       protected:
         int num_mult_switches_;
+        int num_adder_switches_;
         int num_levels_;
         int vn_size_;
         int vn_num_;
@@ -61,7 +62,6 @@ namespace MAERI {
 
       private:
         void IdleSwitchesProcess(int start_index) {
-          int num_adder_switches = num_mult_switches_ - 1;
           for (int inPrt = start_index; inPrt < num_mult_switches_; inPrt++) {
               if(inPrt <2) {
                 single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, inPrt % 2);
@@ -69,22 +69,141 @@ namespace MAERI {
               }
               else if(inPrt > num_mult_switches_-3) {
                 single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, inPrt % 2);
-                inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
+                inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches_ - 1, std::make_pair(num_levels_ - 1, 1)));
               }
               else {
                 int dbrs_id = (inPrt - 2)/4;
                 int port_id = (inPrt -2) % 4;
                 int inorder_id =  2 * (inPrt / 2);
-                //std::cout << "inorder_id: " << inorder_id << ", dbrs_id: " << dbrs_id << ", port_id: " << port_id << std::endl;
                 double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
                 inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
               }
             }
         }
 
+        void LowestLevelNonUniformCase() {
+          std::vector<int> vn_sizes;
+          std::ifstream readVNSizes("non_uniform_VN_sizes.txt");
+          int size;
+          int count = 0;
+
+          while (readVNSizes >> size) {
+            vn_sizes.push_back(size);
+            count += size;
+            //std::cout << size << "\n" << std::endl;
+          }
+          readVNSizes.close();
+          if (count >= num_mult_switches_) {
+            std::cout << "ERROR: aaaNon-Uniform VN Sizes total exceeds the number of multiplier switches." << std::endl;
+            return;
+          }
+
+          int vn_id = 0;
+          int index = 0;
+          while (!vn_sizes.empty()) {
+            int vn_size = vn_sizes.front();
+            vn_sizes.erase(vn_sizes.begin());
+
+            int index_inc = vn_size;
+            for (int i = index; i < index + vn_size; i++) {
+              auto compile_packet = std::make_shared<CompilePacket>(vn_id, vn_size, 1);
+              //std::cout<< "VN Size: " << vn_size << ", VN ID: " << vn_id << std::endl;
+              if (i < 2) {
+                int vn_num_exist = single_reduction_switches_[num_levels_-1][0]->GetVN_Nums();
+                if (vn_num_exist == 0) {
+                  single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, i % 2);
+                  if (vn_size < 2) {
+                    index_inc++;
+                  }
+                } else if (vn_num_exist == 1) {
+                  if (single_reduction_switches_[num_levels_-1][0]->CheckIfSameID(vn_id)) {
+                    single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, i % 2);
+                  } else {
+                    std::cout << "ERROR: One Single Switch inputs 2 kind of VNs" << std::endl;
+                    return;
+                  }
+                }
+                inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
+              } else if (i > num_mult_switches_-3) {
+                int vn_num_exist = single_reduction_switches_[num_levels_-1][1]->GetVN_Nums();
+                if (vn_num_exist == 0) {
+                  single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, i % 2);
+                  if (vn_size < 2) {
+                    index_inc++;
+                  }
+                } else if (vn_num_exist == 1) {
+                  if (single_reduction_switches_[num_levels_-1][1]->CheckIfSameID(vn_id)) {
+                    single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, i % 2);
+                  } else {
+                    std::cout << "ERROR: One Single Switch inputs 2 kind of VNs" << std::endl;
+                    return;
+                  }
+                }
+                inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches_ - 1, std::make_pair(num_levels_ - 1, 1)));
+              } else {
+                int dbrs_id = (i - 2)/4;
+                int port_id = (i - 2) % 4;
+                int inorder_id =  2 * (i / 2);
+                
+                //std::cout << "dbrs_id: " << dbrs_id << ", port_id: " << port_id << ", inorder_id: " << inorder_id << std::endl; 
+
+                int vn_num_exist = double_reduction_switches_[num_levels_-1][dbrs_id]->GetVN_Nums();
+                //std::cout << "vn_num_exist: " << vn_num_exist << std::endl;
+                if (vn_num_exist == 0) {
+                  double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
+                  //std::cout << "DW on branch == 0" << std::endl;
+                } else if (vn_num_exist == 1) {
+                  int free_ports = double_reduction_switches_[num_levels_-1][dbrs_id]->GetFreePorts();
+                  //std::cout << "Free_ports: " << free_ports << std::endl;
+                  if (double_reduction_switches_[num_levels_-1][dbrs_id]->CheckIfSameID(vn_id)) {
+                    //std::cout << "DW on branch == 1-1" << std::endl;
+                    double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
+                  } else if (vn_size >= free_ports) { // this kind of vn first time entry, so the whole vn size have not being filled
+                    //std::cout << "DW on branch == 1-2" << std::endl;
+                    double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
+                  } else {
+                    //std::cout << "DW on branch == 1-3" << std::endl;
+                    // Fill double switch with the second VN kind from right to left. This is to utilize the property of double switch.
+                    for (int j = 0; j < vn_size; j++) {
+                      //std::cout << "position take: " << port_id + free_ports - 1 - j << std::endl;
+                      double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id + free_ports - 1 - j);
+                      int i_new =  i + free_ports - 1 - j;
+                      inorder_id = 2 * (i_new / 2);
+                      //std::cout << "inorder id: " << inorder_id << std::endl;
+                      inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
+                    }
+                    index_inc += (free_ports - vn_size);
+                    break;
+                  } 
+                } else if (vn_num_exist == 2) {
+                  if (double_reduction_switches_[num_levels_-1][dbrs_id]->CheckIfSameID(vn_id)) {
+                    //std::cout << "DW on branch == 2-1" << std::endl;
+                    double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
+                  } else {
+                    //std::cout << "ERROR: One Single Switch inputs 2 kind of VNs" << std::endl;
+                    return;
+                  }
+                }    
+                inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
+              }
+            }
+            index += index_inc;
+            vn_id++;
+            //std::cout << "Index add up: " << index_inc  << ", Index now: " << index << std::endl;
+          }
+
+          //std::cout << "Final Index now: " << index << std::endl;
+
+          if (index > num_mult_switches_) {
+            std::cout << "ERROR: Non-Uniform VN Sizes total exceeds the number of multiplier switches.";
+            return;
+          }
+
+          IdleSwitchesProcess(index);
+        }
+
         void LowestLevelSingleVNCase() {
           int max_vn_num = num_mult_switches_ / 2;
-          int num_adder_switches = num_mult_switches_ - 1;
           if (vn_num_ > max_vn_num) {
             std::cout << "ERROR: Number of VNs exceeds the maximum number(num_multiplier / 2) allowed for VN SIZE 1" << std::endl;
             return;
@@ -94,22 +213,16 @@ namespace MAERI {
                 auto compile_packet = std::make_shared<CompilePacket>(vn_id, vn_size_, 1);
                 if (vn_id == 0) {
                   single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, 0);
-                  //single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 0);
-                  //single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 1);
                   inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
                 } else if (vn_id == max_vn_num - 1) {
                   single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, 0);
-                  //single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 0);
-                  //single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 1);
-                  inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
+                  inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches_ - 1, std::make_pair(num_levels_ - 1, 1)));
                 } else {
                   int dbrs_id = (vn_id - 1) / 2;
                   int pos_id = (vn_id - 1) % 2;
                   int port_id = pos_id == 0 ? 0 : 3;
                   int inorder_id = vn_id * 2;
                   double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                  //double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
-                  //double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id + 1);
                   inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
                 }
               } else {
@@ -120,12 +233,9 @@ namespace MAERI {
         }
 
         void LowestLevelNormalCase() {
-          int num_adder_switches = num_mult_switches_ - 1;
           for(int inPrt = 0; inPrt < num_mult_switches_; inPrt++) {
             int vn_id = inPrt / vn_size_;
-            //int num_vns = num_mult_switches_ / vn_size_;
             auto compile_packet = std::make_shared<CompilePacket>(vn_id, vn_size_, 1);
-            //            for (int sw = 0; sw < num_mult_switches_; sw++) {
             if(vn_id < vn_num_) {
               if(inPrt <2) {
 #ifdef DEBUG
@@ -141,7 +251,7 @@ namespace MAERI {
 #endif
                 single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, inPrt %2 );
                 single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, inPrt % 2);
-                inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
+                inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches_ - 1, std::make_pair(num_levels_ - 1, 1)));
               }
               else {
                 int dbrs_id = (inPrt - 2)/4;
@@ -152,7 +262,6 @@ namespace MAERI {
                 int inorder_id =  2 * (inPrt / 2);
                 double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
                 double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
-                std::cout << "inorder_id: " << inorder_id << ", dbrs_id: " << dbrs_id << ", port_id: " << port_id << std::endl;
                 inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
               }
             } else {
@@ -175,6 +284,8 @@ namespace MAERI {
           int numLvs = static_cast<int>(log2(numMultSwitches));
 
           num_levels_ = numLvs;
+
+          num_adder_switches_ = num_mult_switches_ - 1;
 
           for(int lv = 0; lv < numLvs ; lv++) {
             std::vector<std::shared_ptr<SingleReductionSwitch>> lvSgrs;
@@ -218,264 +329,14 @@ namespace MAERI {
 
           assert(num_levels_ >= 1);
 
-          int num_adder_switches = num_mult_switches_ - 1;
-
           if (non_uniform) {
-            std::vector<int> vn_sizes;
-            std::ifstream readVNSizes("non_uniform_VN_sizes.txt");
-            int size;
-            int count = 0;
-
-            while (readVNSizes >> size) {
-              vn_sizes.push_back(size);
-              if (size == 1) {
-                count += 2;
-              } else {
-                count += size;
-              }
-              std::cout << size << "\n" << std::endl;
-            }
-            readVNSizes.close();
-            if (count >= num_mult_switches_) {
-              std::cout << "ERROR: Non-Uniform VN Sizes total exceeds the number of multiplier switches.";
-              return;
-            }
-
-            int vn_id = 0;
-            int index = 0;
-            while (!vn_sizes.empty()) {
-              int vn_size = vn_sizes.front();
-              vn_sizes.erase(vn_sizes.begin());
-              //std::cout << "VN Size: " << vn_size << std::endl;
-
-              int index_inc = vn_size;
-              for (int i = index; i < index + vn_size; i++) {
-                auto compile_packet = std::make_shared<CompilePacket>(vn_id, vn_size, 1);
-                std::cout<< "VN Size: " << vn_size << ", VN ID: " << vn_id << std::endl;
-                if (i < 2) {
-                  int vn_num_exist = single_reduction_switches_[num_levels_-1][0]->GetVN_Nums();
-                  if (vn_num_exist == 0) {
-                    single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, i % 2);
-                    if (vn_size < 2) {
-                      index_inc++;
-                    }
-                  } else if (vn_num_exist == 1) {
-                    if (single_reduction_switches_[num_levels_-1][0]->CheckIfSameID(vn_id)) {
-                      single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, i % 2);
-                    } else {
-                      std::cout << "ERROR: One Single Switch inputs 2 kind of VNs" << std::endl;
-                      return;
-                    }
-                  }
-                  //single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 0);
-                  //single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 1);
-                  inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
-                } else if (i > num_mult_switches_-3) {
-                  int vn_num_exist = single_reduction_switches_[num_levels_-1][1]->GetVN_Nums();
-                  if (vn_num_exist == 0) {
-                    single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, i % 2);
-                    if (vn_size < 2) {
-                      index_inc++;
-                    }
-                  } else if (vn_num_exist == 1) {
-                    if (single_reduction_switches_[num_levels_-1][1]->CheckIfSameID(vn_id)) {
-                      single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, i % 2);
-                    } else {
-                      std::cout << "ERROR: One Single Switch inputs 2 kind of VNs" << std::endl;
-                      return;
-                    }
-                  }
-                  //single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 0);
-                  //single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 1);
-                  inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
-                } else {
-                  int dbrs_id = (i - 2)/4;
-                  int port_id = (i - 2) % 4;
-                  int inorder_id =  2 * (i / 2);
-                  
-                  std::cout << "dbrs_id: " << dbrs_id << ", port_id: " << port_id << ", inorder_id: " << inorder_id << std::endl; 
-
-                  int vn_num_exist = double_reduction_switches_[num_levels_-1][dbrs_id]->GetVN_Nums();
-                  std::cout << "vn_num_exist: " << vn_num_exist << std::endl;
-                  if (vn_num_exist == 0) {
-                    double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                    
-                    /*if (vn_size < 2) {
-                      index_inc++;
-                    }*/
-                    std::cout << "DW on branch == 0" << std::endl;
-                  } else if (vn_num_exist == 1) {
-                    int free_ports = double_reduction_switches_[num_levels_-1][dbrs_id]->GetFreePorts();
-                    std::cout << "Free_ports: " << free_ports << std::endl;
-                    if (double_reduction_switches_[num_levels_-1][dbrs_id]->CheckIfSameID(vn_id)) {
-                      std::cout << "DW on branch == 1-1" << std::endl;
-                      double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                    } else if (vn_size >= free_ports) { // this kind of vn first time entry, so the whole vn size have not being filled
-                      std::cout << "DW on branch == 1-2" << std::endl;
-                      double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                    } else {
-                      std::cout << "DW on branch == 1-3" << std::endl;
-                      // Fill double switch with the second VN kind from right to left. This is to utilize the property of double switch.
-                      for (int j = 0; j < vn_size; j++) {
-                        double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id + free_ports - 1 - j);
-                      }
-                      index_inc += (free_ports - vn_size);
-                      break;
-                    } 
-                  } else if (vn_num_exist == 2) {
-                    if (double_reduction_switches_[num_levels_-1][dbrs_id]->CheckIfSameID(vn_id)) {
-                      std::cout << "DW on branch == 2-1" << std::endl;
-                      double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                    } else {
-                      std::cout << "ERROR: One Single Switch inputs 2 kind of VNs" << std::endl;
-                      return;
-                    }
-                  }    
-                  inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
-                }
-              }
-              index += index_inc;
-              vn_id++;
-              std::cout << "Index add up: " << index_inc  << ", Index now: " << index << std::endl;
-            }
-
-            std::cout << "Final Index now: " << index << std::endl;
-
-            if (index >= num_mult_switches_) {
-              std::cout << "ERROR: Non-Uniform VN Sizes total exceeds the number of multiplier switches.";
-              return;
-            }
-
-            IdleSwitchesProcess(index);
+            LowestLevelNonUniformCase();
           } else {
-            //int num_vns = vn_num_;
-
             // special case handle: vn_size = 1 (ps: vn_num cannot exceed num_multiplier / 2)
             if (vn_size_ == 1) {
               LowestLevelSingleVNCase();
-              /*int max_vn_num = num_mult_switches_ / 2;
-              if (num_vns > max_vn_num) {
-                std::cout << "ERROR: Number of VNs exceeds the maximum number(num_multiplier / 2) allowed for VN SIZE 1" << std::endl;
-                return;
-              } else {
-                for (int vn_id = 0; vn_id < max_vn_num; vn_id++) {
-                  if (vn_id < num_vns) {
-                    auto compile_packet = std::make_shared<CompilePacket>(vn_id, vn_size_, 1);
-                    if (vn_id == 0) {
-                      single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, 0);
-                      //single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 0);
-                      //single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 1);
-                      inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
-                    } else if (vn_id == max_vn_num - 1) {
-                      single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, 0);
-                      //single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 0);
-                      //single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 1);
-                      inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
-                    } else {
-                      int dbrs_id = (vn_id - 1) / 2;
-                      int pos_id = (vn_id - 1) % 2;
-                      int port_id = pos_id == 0 ? 0 : 3;
-                      int inorder_id = vn_id * 2;
-
-                      double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                      //double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
-                      //double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id + 1);
-                      inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
-                    }
-                  } else {
-                    if (vn_id == 0) {
-                      single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 0);
-                      single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, 1);
-                      inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
-                    } else if (vn_id == max_vn_num - 1) {
-                      single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 0);
-                      single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, 1);
-                      inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
-                    } else {
-                      int dbrs_id = (vn_id - 1) / 2;
-                      int pos_id = (vn_id - 1) % 2;
-                      int port_id = pos_id == 0 ? 0 : 3;
-                      int inorder_id = vn_id * 2;
-
-                      int port_id_nearby = port_id == 0 ? 1 : 2;
-                      double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
-                      double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id_nearby);
-                      inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
-                    }
-                  }
-                }
-              }*/
-
             } else {
               LowestLevelNormalCase();
-              //Lowest level
-              /*for(int inPrt = 0; inPrt < num_mult_switches_; inPrt++) {
-                int vn_id = inPrt / vn_size_;
-                //int num_vns = num_mult_switches_ / vn_size_;
-                auto compile_packet = std::make_shared<CompilePacket>(vn_id, vn_size_, 1);
-
-                //            for (int sw = 0; sw < num_mult_switches_; sw++) {
-                if(vn_id < num_vns) {
-                  if(inPrt <2) {
-  #ifdef DEBUG
-                    std::cout << "SGRS[" << num_levels_-1 << "][0] receives an initial packet to port " << inPrt %2 << std::endl;
-  #endif
-                    single_reduction_switches_[num_levels_-1][0]->PutPacket(compile_packet, inPrt %2 );
-                    single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, inPrt % 2);
-                    inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
-                  }
-                  else if(inPrt > num_mult_switches_-3) {
-  #ifdef DEBUG
-                    std::cout << "SGRS[" << num_levels_-1 << "][1] receives an initial packet to port " << inPrt %2 << std::endl;
-  #endif
-                    single_reduction_switches_[num_levels_-1][1]->PutPacket(compile_packet, inPrt %2 );
-                    single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, inPrt % 2);
-                    inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
-                  }
-                  else {
-                    int dbrs_id = (inPrt - 2)/4;
-                    int port_id = (inPrt -2) % 4;
-  #ifdef DEBUG
-                    std::cout << "DBRS[" << num_levels_-1 << "]["<< dbrs_id << "] receives an initial packet to port " << port_id << std::endl;
-  #endif
-                    int inorder_id =  2 * (inPrt / 2);
-                    double_reduction_switches_[num_levels_-1][dbrs_id]->PutPacket(compile_packet, port_id);
-                    double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
-                    std::cout << "inorder_id: " << inorder_id << ", dbrs_id: " << dbrs_id << ", port_id: " << port_id << std::endl;
-                    inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
-                  }
-                } else {
-                  if(inPrt <2) {
-  #ifdef DEBUG
-                    std::cout << "SGRS[" << num_levels_-1 << "][0] receives an initial packet to port " << inPrt %2 << std::endl;
-  #endif
-                    single_reduction_switches_[num_levels_-1][0]->SetIDConnect(-1, inPrt % 2);
-                    inorder_single_reduction_swtiches.insert(std::make_pair(0, std::make_pair(num_levels_ - 1, 0)));
-                  }
-                  else if(inPrt > num_mult_switches_-3) {
-  #ifdef DEBUG
-                    std::cout << "SGRS[" << num_levels_-1 << "][1] receives an initial packet to port " << inPrt %2 << std::endl;
-  #endif
-                    single_reduction_switches_[num_levels_-1][1]->SetIDConnect(-1, inPrt % 2);
-                    inorder_single_reduction_swtiches.insert(std::make_pair(num_adder_switches - 1, std::make_pair(num_levels_ - 1, 1)));
-                  }
-                  else {
-                    int dbrs_id = (inPrt - 2)/4;
-                    int port_id = (inPrt -2) % 4;
-  #ifdef DEBUG
-                    std::cout << "DBRS[" << num_levels_-1 << "]["<< dbrs_id << "] receives an initial packet to port " << port_id << std::endl;
-  #endif
-                    int inorder_id =  2 * (inPrt / 2);
-                    std::cout << "inorder_id: " << inorder_id << ", dbrs_id: " << dbrs_id << ", port_id: " << port_id << std::endl;
-                    double_reduction_switches_[num_levels_-1][dbrs_id]->SetIDConnect(-1, port_id);
-                    inorder_double_reduction_swtiches.insert(std::make_pair(inorder_id, std::make_pair(num_levels_ - 1, dbrs_id)));
-                  }
-                }
-                //}
-              }
-  #ifdef DEBUG
-            std::cout << std::endl;
-  #endif*/
             }
           }
 
@@ -498,7 +359,6 @@ namespace MAERI {
               int reverse_level = num_levels_ - 1 - lv;
               int pos;
               int id_to_connect = pow(2, reverse_level) - 1;
-              //inorder_single_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, 0)));
               if(sgrs0_output != nullptr) {
 #ifdef DEBUG
                 std::cout << "SGRS[" << lv << "][0] Sends a packet to SGRS[" << lv-1 << "][0]" << std::endl;
@@ -511,8 +371,6 @@ namespace MAERI {
 
               auto sgrs1_output = single_reduction_switches_[lv][1]->GetPacket(0);
               id_to_connect = pow(2, reverse_level) - 1 + 2 * (pow(2, lv) - 1) * pow(2, reverse_level);
-              //pos = pow(reverse_level_prev, 2) - 1 + 2 * pow(lv, 2) * pow(reverse_level_prev, 2);
-              //inorder_single_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, 1)));
               if(sgrs1_output != nullptr) {
                 if(lv != 1) {
 #ifdef DEBUG
@@ -543,34 +401,23 @@ namespace MAERI {
               if(lv > 1) {
                 auto dbrs_lEdgeOutput = double_reduction_switches_[lv][0]->GetPacket(0);
                 id_to_connect = pow(2, reverse_level) - 1 + 2*1*pow(2, reverse_level);
-                //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, 0)));
-
-                //int pos_R = pow(reverse_level_prev, 2) - 1 + 2*2*pow(reverse_level_prev, 2);
-                //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, 0)));
                 if(dbrs_lEdgeOutput != nullptr) {
 #ifdef DEBUG
                   std::cout << "DBRS[" << lv << "][0]" << "Sends a packet to " << "SGRS[ " << lv -1 << "][0]" << std::endl;
 #endif
                   single_reduction_switches_[lv-1][0]->PutPacket(dbrs_lEdgeOutput, 1);
-                  //pos = pow(reverse_level_prev, 2) - 1 + 2*1*pow(reverse_level_prev, 2);
-                  //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv - 1, 0)));
                   single_reduction_switches_[lv-1][0]->SetIDConnect(id_to_connect, 1);
                 }
 
                 auto dbrs_rEdgeOutput = double_reduction_switches_[lv][num_dbrs_in_lv-1]->GetPacket(1);
-                //pos_L = pow(reverse_level_prev, 2) - 1 + 2*(2 * num_dbrs_in_lv - 1)*pow(reverse_level_prev, 2);
-                //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, num_dbrs_in_lv-1)));
 
                 id_to_connect = pow(2, reverse_level) - 1 + 2*(2 * num_dbrs_in_lv)*pow(2, reverse_level);
-                //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, num_dbrs_in_lv-1)));
                 if(dbrs_rEdgeOutput != nullptr) {
 #ifdef DEBUG
                   std::cout << "DBRS[" << lv << "][" << num_dbrs_in_lv-1 << "]" << "Sends a packet to " << "SGRS[ " << lv -1 << "][1]" << std::endl;
                   std::cout <<"Packet: vnID: " << dbrs_rEdgeOutput->GetVNID() << ", vnSz: " << dbrs_rEdgeOutput->GetVNSize() << ", pSum: " << dbrs_rEdgeOutput->GetNumPSums() << std::endl;
 #endif
                   single_reduction_switches_[lv-1][1]->PutPacket(dbrs_rEdgeOutput, 0);
-                  //pos = pow(reverse_level_prev, 2) - 1 + 2*(2 * num_dbrs_in_lv)*pow(reverse_level_prev, 2);
-                  //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv - 1, num_dbrs_in_lv-1)));
                   single_reduction_switches_[lv-1][1]->SetIDConnect(id_to_connect, 0);
                 }
 
@@ -587,10 +434,6 @@ namespace MAERI {
 
                     auto packet = double_reduction_switches_[lv][targ_output_sw_id]->GetPacket(targ_output_sw_port);
                     id_to_connect = pow(2, reverse_level) - 1 + 2*(2 + dbrs_inPrt)*pow(2, reverse_level);
-                    //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, targ_output_sw_id)));
-
-                    //pos_R = pow(reverse_level_prev, 2) - 1 + 2*(2 + dbrs_inPrt)*pow(reverse_level_prev, 2);
-                    //inorder_double_reduction_swtiches.insert(std::make_pair(pos, std::make_pair(lv, targ_output_sw_id)));
                     if(packet != nullptr && !(targ_output_sw_id == 0 && targ_output_sw_port == 0) ) {
 #ifdef DEBUG
                       std::cout << "DBRS[" << lv << "][" << targ_output_sw_id << "] Sends a packet from port " << targ_output_sw_port << " to DBRS[" << lv-1 << "][" << targ_input_sw_id << "] port" << targ_input_sw_port << std::endl;
@@ -608,39 +451,6 @@ namespace MAERI {
           } // end of for (lv = num_levels_-1; lv>=0; lv--)
 
           std::cout << "Finished processing reduction network information" << std::endl;
-
-          /*int num_adder_switches = 0;
-          for (int level = 0; level < num_levels_; level--) {
-            num_adder_switches += pow(level, 2);
-          }
-
-          auto sgrs_config = this->GetSGRS_Config();
-          auto dbrs_config = this->GetDBRS_Config();
-
-          int sgrs_count = 0;
-          for(auto it: *sgrs_config) {
-            std::cout << "SGRS[" << sgrs_count << "]: " << it->ToString() << std::endl;
-            if (sgrs_count == 0) {
-              inorder_single_reduction_swtiches.insert(pair<int, int>(num_adder_switches / 2, 0));
-            } else {
-              int level = num_levels_ - (sgrs_count + 1) / 2 - 1;
-              int pos = sgrs_count % 2;
-              if (pos == 1) {
-                int inorder_id = pow(level, 2) - 1;
-                inorder_single_reduction_swtiches.insert(pair<int, int>(inorder_id, 0));
-              } else {
-                int inorder_id = pow(level, 2) - 1 + 2 * pos * pow(level, 2);
-                inorder_single_reduction_swtiches.insert(pair<int, int>(inorder_id, 0));
-              }
-            }
-            sgrs_count++;
-          }
-
-          int dbrs_count = 0;
-          for(auto it: *dbrs_config) {
-            std::cout << "DBRS[" << dbrs_count << "]: " << it->ToString() << std::endl;
-            dbrs_count++;
-          }*/
         }
 
         int GetNumDBRS(int target_level) {
@@ -662,6 +472,49 @@ namespace MAERI {
           for(auto it: *dbrs_config) {
             std::cout << "DBRS[" << dbrs_count << "]: " << it->ToString() << std::endl;
             dbrs_count++;
+          }
+        }
+
+        void PrintConfig_Inorder() {
+          std::cout << "Number of Levels: " << num_levels_ << ", Number of Adder Switches: " << num_adder_switches_ << std::endl;
+          for (int inorder_id = 0; inorder_id < num_adder_switches_; inorder_id++) {
+            auto it = inorder_single_reduction_swtiches.find(inorder_id);
+            if (it != inorder_single_reduction_swtiches.end()) {
+              int level = std::get<0>(inorder_single_reduction_swtiches[inorder_id]);
+              int pos = std::get<1>(inorder_single_reduction_swtiches[inorder_id]);
+              auto sgrs = single_reduction_switches_[level][pos];
+              auto config = std::make_shared<SGRS_Config>();
+              config->genOutput_ = sgrs->GetGenOutput();
+              config->mode_ = sgrs->GetMode();
+            
+              std::cout << "Switch[" << inorder_id << "]: " << config->ToString() << std::endl;
+            } else {
+              it = inorder_double_reduction_swtiches.find(inorder_id);
+              if (it != inorder_double_reduction_swtiches.end()) {
+                int level = std::get<0>(inorder_double_reduction_swtiches[inorder_id]);
+                int pos = std::get<1>(inorder_double_reduction_swtiches[inorder_id]);  
+                auto dbrs = double_reduction_switches_[level][pos];
+                int inorder_id_left = inorder_id - 2 * pow(2, num_levels_ - 1 - level);
+                it = inorder_double_reduction_swtiches.find(inorder_id_left);
+                std::map<int, std::pair<int, int>>::iterator it_left = inorder_single_reduction_swtiches.find(inorder_id_left);
+                auto config = std::make_shared<DBRS_Single_Config>();
+                if (it != inorder_double_reduction_swtiches.end()) {
+                  int pos_left = std::get<1>(inorder_double_reduction_swtiches[inorder_id_left]);
+                  if (pos == pos_left) {
+                    config->genOutput_ = dbrs->GetGenOutputR();
+                    config->mode_ = dbrs->GetModeR();
+                  } else {
+                    config->genOutput_ = dbrs->GetGenOutputL();
+                    config->mode_ = dbrs->GetModeL();
+                  }
+                  std::cout << "Switch[" << inorder_id << "]: " << config->ToString() << std::endl;
+                } else if (it_left != inorder_single_reduction_swtiches.end()) {
+                  config->genOutput_ = dbrs->GetGenOutputL();
+                  config->mode_ = dbrs->GetModeL();
+                  std::cout << "Switch[" << inorder_id << "]: " << config->ToString() << std::endl;
+                }
+              }
+            }
           }
         }
 

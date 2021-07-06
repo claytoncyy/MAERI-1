@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
+Author: Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu)
 
 *******************************************************************************/
 
@@ -83,6 +83,42 @@ namespace MAERI {
             ret += "AddTwo";
           }
           else if (modeR_ == DBRS_SubMode::AddThree) {
+            ret += "AddThree";
+          }
+          else {
+            ret += "Idle";
+          }
+
+          return ret;
+        }
+    };
+
+    class DBRS_Single_Config {
+      public:
+        bool genOutput_;
+
+        DBRS_SubMode mode_;
+
+        std::string ToString() {
+          std::string ret = "";
+
+          ret += "GenOutput: ";
+          if(genOutput_) {
+            ret += "True";
+          }
+          else {
+            ret += "False";
+          }
+
+
+          ret += ", Mode: ";
+          if (mode_ == DBRS_SubMode::AddOne) {
+            ret += "AddOne";
+          }
+          else if (mode_ == DBRS_SubMode::AddTwo) {
+            ret += "AddTwo";
+          }
+          else if (mode_ == DBRS_SubMode::AddThree) {
             ret += "AddThree";
           }
           else {
