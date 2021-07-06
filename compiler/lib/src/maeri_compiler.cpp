@@ -32,7 +32,7 @@ Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
 
 int main(int argc, char* argv[]) {
 
-  if(argc != 5) {
+  if(argc != 6) {
     std::cout << "Usage: ./(ExeFile) (NumMultSwitches) (VNSize) (VNNum) (NonUniform) (LayerFileName)" << std::endl;
     return 0;
   }
@@ -42,10 +42,10 @@ int main(int argc, char* argv[]) {
   int num_mapped_vns = 2;
   //int vn_size = atoi(argv[2]);
   //int num_mapped_vns = atoi(argv[3]);
-  int non_uniform = atoi(argv[4]);
+  bool non_uniform = atoi(argv[4]) == 0 ? false : true;
   //int num_mapped_vns = numMultSwitches / vn_size;
 
-  auto ars = std::make_shared<MAERI::ReductionNetwork::AbstractReductionNetwork>(numMultSwitches, vn_size, num_mapped_vns);
+  auto ars = std::make_shared<MAERI::ReductionNetwork::AbstractReductionNetwork>(numMultSwitches, vn_size, num_mapped_vns, non_uniform);
 
   MAERI::MachineCodeGenerator::RNConfigWriter outputFileWriter("RN_Config.vmh");
 

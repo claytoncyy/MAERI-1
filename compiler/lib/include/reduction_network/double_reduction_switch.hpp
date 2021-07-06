@@ -73,7 +73,7 @@ namespace MAERI {
           input_ID_LR_(-1),
           input_ID_RL_(-1),
           input_ID_RR_(-1),
-          vn_nums(0)，
+          vn_nums(0),
           free_ports(4)
         {
           for(int injCount = 0; injCount < 4; injCount++) {
@@ -249,6 +249,7 @@ namespace MAERI {
 
           // Determine output packets and genOutputL
           if(vn_L != -1) {
+            std::cout << "DBRS: vn_L_size: " << vn_L_size << ", vn_L_num_accumulated_psums: " << vn_L_num_accumulated_psums << std::endl;
             if(vn_L_size == vn_L_num_accumulated_psums) {
               genOutputL_ = true;
             }
@@ -263,6 +264,7 @@ namespace MAERI {
           }
           std::cout << vn_R << ", AND " << vn_R_num_accumulated_psums << std::endl; 
           if(vn_R != -1 || modeR_ == DBRS_SubMode::AddTwo) {
+            std::cout << "DBRS: vn_R_size: " << vn_R_size << ", vn_R_num_accumulated_psums: " << vn_R_num_accumulated_psums << std::endl;
             if(vn_R_size == vn_R_num_accumulated_psums) {
               genOutputR_ = true;
             }
