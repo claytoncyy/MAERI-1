@@ -17,6 +17,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
+Update (July 2021): Yangyu Chen (yangyuchen@gatech.edu)
+
 *******************************************************************************/
 
 #include "abstract_reduction_network.hpp"
@@ -38,12 +40,9 @@ int main(int argc, char* argv[]) {
   }
 
   int numMultSwitches = atoi(argv[1]);
-  int vn_size = 6;
-  int num_mapped_vns = 2;
-  //int vn_size = atoi(argv[2]);
-  //int num_mapped_vns = atoi(argv[3]);
+  int vn_size = atoi(argv[2]);
+  int num_mapped_vns = atoi(argv[3]);
   bool non_uniform = atoi(argv[4]) == 0 ? false : true;
-  //int num_mapped_vns = numMultSwitches / vn_size;
 
   auto ars = std::make_shared<MAERI::ReductionNetwork::AbstractReductionNetwork>(numMultSwitches, vn_size, num_mapped_vns, non_uniform);
 

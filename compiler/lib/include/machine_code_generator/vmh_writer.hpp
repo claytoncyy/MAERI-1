@@ -16,7 +16,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author : Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu)
+Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
+Update (July 2021): Yangyu Chen (yangyuchen@gatech.edu)
 *******************************************************************************/
 
 #ifndef VMH_WRITER_H_
@@ -36,6 +37,7 @@ Author : Hyoukjun Kwon (hyoukjun@gatech.edu), Yangyu Chen (yangyuchen@gatech.edu
 #include "analysis-structure.hpp"
 #include "number_system_converter.hpp"
 
+//#define DEBUG
 
 namespace MAERI {
   namespace MachineCodeGenerator {
@@ -72,23 +74,31 @@ namespace MAERI {
           stack.push(num_adder_switches / 2);
           std::string line = "";
           int count = 0;
-          //std::cout << "numLvs: " << num_levels << ", num_adder_switches: " << num_adder_switches << std::endl;
+#ifdef DEBUG
+          std::cout << "numLvs: " << num_levels << ", num_adder_switches: " << num_adder_switches << std::endl;
+#endif
           while (!stack.empty()) {
             int id = stack.top();
             stack.pop();
             if (id == -1) {
               continue;
             }
-            //std::cout << "id:" << id << std::endl;
+#ifdef DEBUG
+            std::cout << "id:" << id << std::endl;
+#endif
             std::map<int, std::pair<int, int>>::iterator it;
             it = SGRS_mapping.find(id);
             if (it != SGRS_mapping.end()) {
               int level = std::get<0>(SGRS_mapping[id]);
               int pos = std::get<1>(SGRS_mapping[id]);
-              //std::cout << "Level & position:" << level << ", " << pos << std::endl;
+#ifdef DEBUG
+              std::cout << "Level & position:" << level << ", " << pos << std::endl;
+#endif
               line.append(WriteRN_SGRS_One(single_reduction_switches_[level][pos]));
-              //std::cout << "ID_L: " << single_reduction_switches_[level][pos]->GetInput_ID_L() << std::endl;
-              //std::cout << "ID_R: " << single_reduction_switches_[level][pos]->GetInput_ID_R() << std::endl;
+#ifdef DEBUG
+              std::cout << "ID_L: " << single_reduction_switches_[level][pos]->GetInput_ID_L() << std::endl;
+              std::cout << "ID_R: " << single_reduction_switches_[level][pos]->GetInput_ID_R() << std::endl;
+#endif
               stack.push(single_reduction_switches_[level][pos]->GetInput_ID_L());
               stack.push(single_reduction_switches_[level][pos]->GetInput_ID_R());
             } else {
@@ -96,30 +106,40 @@ namespace MAERI {
               if (it != DBRS_mapping.end()) {
                 int level = std::get<0>(DBRS_mapping[id]);
                 int pos = std::get<1>(DBRS_mapping[id]);  
-                //std::cout << "DBRS Level & position:" << level << ", " << pos << std::endl;
+#ifdef DEBUG
+                std::cout << "DBRS Level & position:" << level << ", " << pos << std::endl;
+#endif
                 int inorder_id_left = id - 2 * pow(2, num_levels - 1 - level);
                 it = DBRS_mapping.find(inorder_id_left);
                 std::map<int, std::pair<int, int>>::iterator it_left = SGRS_mapping.find(inorder_id_left);
-                //std::cout << "inorder_id_left: " << inorder_id_left << std::endl;
+#ifdef DEBUG
+                std::cout << "inorder_id_left: " << inorder_id_left << std::endl;
+#endif
                 if (it != DBRS_mapping.end()) {
                   int pos_left = std::get<1>(DBRS_mapping[inorder_id_left]);
                   if (pos == pos_left) {
                     line.append(WriteRN_DBRS_Right(double_reduction_switches_[level][pos]));
-                    //std::cout << "ID_RL: " << double_reduction_switches_[level][pos]->GetInput_ID_RL() << std::endl;
-                    //std::cout << "ID_RR: " << double_reduction_switches_[level][pos]->GetInput_ID_RR() << std::endl;
+#ifdef DEBUG
+                    std::cout << "ID_RL: " << double_reduction_switches_[level][pos]->GetInput_ID_RL() << std::endl;
+                    std::cout << "ID_RR: " << double_reduction_switches_[level][pos]->GetInput_ID_RR() << std::endl;
+#endif
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RR());
                   } else {
-                    line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
-                    //std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
-                    //std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+                    line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos]));
+#ifdef DEBUG 
+                    std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
+                    std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+#endif
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                   }
                 } else if (it_left != SGRS_mapping.end()) {
-                  line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos])); 
-                  //std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
-                  //std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+                  line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos]));
+#ifdef DEBUG
+                  std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
+                  std::cout << "ID_LR: " << double_reduction_switches_[level][pos]->GetInput_ID_LR() << std::endl;
+#endif
                   stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LL());
                   stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                 }
@@ -127,20 +147,17 @@ namespace MAERI {
             }
             if(count == 7) {
               //Flush
-              //std::string flush_str = bin2hex.GetHexString(line);
               outputFile_ << line + "\n";
               line = "";
               count = 0;
             } else {
               count++;
             }
-            std::cout << std::endl;
           }
 
           if(line != "") {
             outputFile_ << line + "\n";
           }
-          std::cout << std::endl;
 
         }
 
@@ -171,7 +188,9 @@ namespace MAERI {
               line.append(ISA::SGRS_MODE_IDLE);
               break;
           }
-          //std::cout << "SGRS Command:" << line << std::endl;
+#ifdef DEBUG
+          std::cout << "SGRS Command:" << line << std::endl;
+#endif
           return line;
         }
 
@@ -202,7 +221,9 @@ namespace MAERI {
               line.append(ISA::DBRS_MODE_IDLE);
               break;
           }
-          //std::cout << "DBRS_R Command:" << line << std::endl;
+#ifdef DEBUG
+          std::cout << "DBRS_R Command:" << line << std::endl;
+#endif
           return line;
         }
 
@@ -233,7 +254,9 @@ namespace MAERI {
               line.append(ISA::DBRS_MODE_PADDING);
               break;
           }
-          //std::cout << "DBRS_L Command:" << line << std::endl;
+#ifdef DEBUG
+          std::cout << "DBRS_L Command:" << line << std::endl;
+#endif
           return line;
         }
     }; // End of class RNConfigWriter
