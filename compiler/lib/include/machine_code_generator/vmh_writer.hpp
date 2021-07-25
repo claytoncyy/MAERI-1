@@ -18,6 +18,7 @@ SOFTWARE.
 
 Author : Hyoukjun Kwon (hyoukjun@gatech.edu)
 Update (July 2021): Yangyu Chen (yangyuchen@gatech.edu)
+
 *******************************************************************************/
 
 #ifndef VMH_WRITER_H_

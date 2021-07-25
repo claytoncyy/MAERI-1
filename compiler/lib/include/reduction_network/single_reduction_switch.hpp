@@ -21,6 +21,7 @@ SOFTWARE.
 
 Author: Hyoukjun Kwon (hyoukjun@gatech.edu)
 Update (July 2021): Yangyu Chen (yangyuchen@gatech.edu)
+
 *******************************************************************************/
 
 #ifndef RN_SGLRS_H_
