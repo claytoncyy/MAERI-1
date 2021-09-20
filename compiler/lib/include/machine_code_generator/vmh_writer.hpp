@@ -71,9 +71,12 @@ namespace MAERI {
                             std::map<int, std::pair<int, int>> SGRS_mapping,
                             int num_levels,
                             int num_adder_switches) {
+          std::ofstream outputBuffValid_;
+          outputBuffValid_.open("outputBuffValid.vmh");
           std::stack<int> stack;
           stack.push(num_adder_switches / 2);
           std::string line = "";
+          std::string buffid = "";
           int count = 0;
 #ifdef DEBUG
           std::cout << "numLvs: " << num_levels << ", num_adder_switches: " << num_adder_switches << std::endl;
@@ -95,6 +98,9 @@ namespace MAERI {
 #ifdef DEBUG
               std::cout << "Level & position:" << level << ", " << pos << std::endl;
 #endif
+              if (single_reduction_switches_[level][pos]->GetGenOutput()) {
+                      outputBuffValid_ << std::to_string(id) + "\n";
+              }
               line.append(WriteRN_SGRS_One(single_reduction_switches_[level][pos]));
 #ifdef DEBUG
               std::cout << "ID_L: " << single_reduction_switches_[level][pos]->GetInput_ID_L() << std::endl;
@@ -119,6 +125,9 @@ namespace MAERI {
                 if (it != DBRS_mapping.end()) {
                   int pos_left = std::get<1>(DBRS_mapping[inorder_id_left]);
                   if (pos == pos_left) {
+                    if (double_reduction_switches_[level][pos]->GetGenOutputR()) {
+                      outputBuffValid_ << std::to_string(id) + "\n";
+                    }
                     line.append(WriteRN_DBRS_Right(double_reduction_switches_[level][pos]));
 #ifdef DEBUG
                     std::cout << "ID_RL: " << double_reduction_switches_[level][pos]->GetInput_ID_RL() << std::endl;
@@ -127,6 +136,9 @@ namespace MAERI {
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RL());
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_RR());
                   } else {
+                    if (double_reduction_switches_[level][pos]->GetGenOutputL()) {
+                      outputBuffValid_ << std::to_string(id) + "\n";
+                    }
                     line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos]));
 #ifdef DEBUG 
                     std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
@@ -136,6 +148,9 @@ namespace MAERI {
                     stack.push(double_reduction_switches_[level][pos]->GetInput_ID_LR());
                   }
                 } else if (it_left != SGRS_mapping.end()) {
+                  if (double_reduction_switches_[level][pos]->GetGenOutputL()) {
+                      outputBuffValid_ << std::to_string(id) + "\n";
+                  }
                   line.append(WriteRN_DBRS_Left(double_reduction_switches_[level][pos]));
 #ifdef DEBUG
                   std::cout << "ID_LL: " << double_reduction_switches_[level][pos]->GetInput_ID_LL() << std::endl;
